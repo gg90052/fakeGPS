@@ -78,23 +78,45 @@ function addGpsJitter(lat, lng, maxMeters) {
 
 // 偵測 ADB 連線裝置，並自動偵測 Android 版本決定 service 指令
 app.get('/api/device', (req, res) => {
+  // 先嘗試偵測 Android
   exec('adb devices', (error, stdout) => {
-    if (error) {
-      return res.json({ device: null });
+    if (!error) {
+      const lines = stdout.split('\n').filter(l => l.trim() && !l.startsWith('List of devices'));
+      const connected = lines.find(l => l.includes('\tdevice'));
+      if (connected) {
+        const device = connected.split('\t')[0].trim();
+        exec('adb shell getprop ro.build.version.sdk', (err, sdkOut) => {
+          const sdk = parseInt((sdkOut || '').trim(), 10);
+          useForegroundService = !isNaN(sdk) && sdk >= 26;
+          currentDriver = 'android';
+          res.json({ device, platform: 'android', androidSdk: isNaN(sdk) ? null : sdk });
+        });
+        return;
+      }
     }
-    const lines = stdout.split('\n').filter(l => l.trim() && !l.startsWith('List of devices'));
-    const connected = lines.find(l => l.includes('\tdevice'));
-    if (!connected) {
-      useForegroundService = false;
-      stopKeepalive();
-      return res.json({ device: null });
-    }
-    const device = connected.split('\t')[0].trim();
-    // 偵測 Android SDK 版本，>= 26（Android 8.0）改用 start-foreground-service
-    exec('adb shell getprop ro.build.version.sdk', (err, sdkOut) => {
-      const sdk = parseInt((sdkOut || '').trim(), 10);
-      useForegroundService = !isNaN(sdk) && sdk >= 26;
-      res.json({ device, androidSdk: isNaN(sdk) ? null : sdk });
+
+    // Android 未找到，嘗試偵測 iOS
+    exec('pymobiledevice3 usbmux list', (iosError, iosStdout) => {
+      if (iosError || !iosStdout.trim() || iosStdout.trim() === '[]') {
+        currentDriver = null;
+        stopKeepalive();
+        return res.json({ device: null, platform: null });
+      }
+      try {
+        const devices = JSON.parse(iosStdout);
+        if (!Array.isArray(devices) || devices.length === 0) {
+          currentDriver = null;
+          stopKeepalive();
+          return res.json({ device: null, platform: null });
+        }
+        const iosDevice = devices[0].DeviceName || devices[0].UniqueDeviceID || 'iOS Device';
+        currentDriver = 'ios';
+        res.json({ device: iosDevice, platform: 'ios' });
+      } catch {
+        currentDriver = null;
+        stopKeepalive();
+        res.json({ device: null, platform: null });
+      }
     });
   });
 });
