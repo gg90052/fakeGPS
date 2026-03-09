@@ -130,15 +130,12 @@ app.post('/api/location', (req, res) => {
   if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return res.json({ success: false, error: '座標超出有效範圍（lat: -90~90, lng: -180~180）' });
   }
-  const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-  const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-  exec(cmd, (error) => {
-    if (error) {
-      return res.json({ success: false, error: error.message });
-    }
-    startKeepalive(lat, lng);
-    res.json({ success: true });
-  });
+  if (!currentDriver) {
+    return res.json({ success: false, error: '尚未連接裝置' });
+  }
+  sendLocation(lat, lng);
+  startKeepalive(lat, lng);
+  res.json({ success: true });
 });
 
 app.post('/api/route/start', (req, res) => {
