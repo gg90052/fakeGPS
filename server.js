@@ -36,14 +36,15 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 
 // 執行送座標（根據裝置類型選擇驅動）
 function sendLocation(lat, lng) {
+  if (!isFinite(lat) || !isFinite(lng)) return;
+  let cmd;
   if (currentDriver === 'android') {
     const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-    const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-    exec(cmd, () => {});
+    cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
   } else if (currentDriver === 'ios') {
-    const cmd = `pymobiledevice3 developer simulate-location set -- ${lat} ${lng}`;
-    exec(cmd, () => {});
+    cmd = `pymobiledevice3 developer simulate-location set -- "${lat}" "${lng}"`;
   }
+  if (cmd) exec(cmd, () => {});
 }
 
 // 啟動 keepalive：儲存座標並定時重送
