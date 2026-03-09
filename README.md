@@ -157,6 +157,10 @@ adb install appium-settings.apk
 
 > **Appium Settings 說明：** 本 APK 來自開源專案 [Appium Settings](https://github.com/appium/io.appium.settings)，如需自行取得最新版，可前往該專案的 [Releases 頁面](https://github.com/appium/io.appium.settings/releases)下載。
 
+> **⚠️ 重要：授予位置權限**
+> 安裝後請**不要直接打開 Appium Settings**（App 介面會閃退，這是正常現象）。請改由手機設定授予權限：
+> 「**設定 → 應用程式 → Appium Settings → 權限 → 位置 → 一律允許**」
+
 ### 步驟五：設定模擬位置應用程式
 
 1. 進入「**開發者選項**」
@@ -449,6 +453,10 @@ adb install appium-settings.apk
 ```
 
 > **About Appium Settings:** This APK is from the open-source project [Appium Settings](https://github.com/appium/io.appium.settings). To get the latest version yourself, visit its [Releases page](https://github.com/appium/io.appium.settings/releases).
+
+> **⚠️ Important: Grant location permission**
+> Do **not** open the Appium Settings app directly — its UI will keep crashing, which is expected behavior. Instead, grant permission through your phone's settings:
+> **Settings → Apps → Appium Settings → Permissions → Location → Allow all the time**
 
 ### Step 5: Set mock location app
 
