@@ -16,18 +16,18 @@
 如果這個工具對你有幫助，歡迎請我喝杯咖啡 ☕
 
 <a href='https://ko-fi.com/I3I41GR33G' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-&nbsp;&nbsp;
-<a href='https://core.newebpay.com/EPG/comment_helper/t9gZwO' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://www.newebpay.com/ud/img/logo_sm2.png' border='0' alt='藍新金流贊助' /></a>
+<br />
+<a href='https://core.newebpay.com/EPG/comment_helper/t9gZwO' target='_blank'><img height='100' style='border:0px;height:100px;' src='https://ez2.app/wp-content/uploads/2025/03/spgateway_logo.png' border='0' alt='藍新金流' /></a>
 
 ---
 
 ## 📚 文件
 
-| 文件 | 適合對象 |
-|------|---------|
-| **本頁（README）** | 功能概覽與技術參考 |
-| [⚡ 快速安裝（quickinstall.md）](quickinstall.md) | 熟悉 CLI 的開發者，快速上手 |
-| [📖 完全新手教學（tutor.md）](tutor.md) | 沒有程式經驗的使用者，從零到完成 |
+| 文件                                              | 適合對象                         |
+| ------------------------------------------------- | -------------------------------- |
+| **本頁（README）**                                | 功能概覽與技術參考               |
+| [⚡ 快速安裝（quickinstall.md）](quickinstall.md) | 熟悉 CLI 的開發者，快速上手      |
+| [📖 完全新手教學（tutor.md）](tutor.md)           | 沒有程式經驗的使用者，從零到完成 |
 
 ---
 
@@ -50,12 +50,12 @@
 
 ## 系統需求
 
-| 項目 | 需求 |
-|------|------|
-| Node.js | 14.0 以上 |
-| ADB (Android Debug Bridge) | 任意版本 |
-| Android 手機 | Android 8.0 以上（建議 10+）|
-| Google Maps API Key | 選用；啟用 Maps JavaScript API 與 Places API（留空則使用免費 OpenStreetMap）|
+| 項目                       | 需求                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| Node.js                    | 14.0 以上                                                                    |
+| ADB (Android Debug Bridge) | 任意版本                                                                     |
+| Android 手機               | Android 8.0 以上（建議 10+）                                                 |
+| Google Maps API Key        | 選用；啟用 Maps JavaScript API 與 Places API（留空則使用免費 OpenStreetMap） |
 
 ---
 
@@ -94,6 +94,7 @@ npm start
 - **填入 Key**：切換為 Google Maps，支援 Places Autocomplete 搜尋
 
 > **如何取得 API Key：**
+>
 > 1. 前往 [Google Cloud Console](https://console.cloud.google.com/)
 > 2. 建立或選擇一個專案
 > 3. 啟用 **Maps JavaScript API** 與 **Places API**
@@ -119,6 +120,7 @@ Key 儲存於 localStorage，重新整理後自動套用。點「**清除**」�
 ### 步驟三：安裝 ADB
 
 **macOS（推薦）：**
+
 ```bash
 brew install android-platform-tools
 ```
@@ -127,11 +129,13 @@ brew install android-platform-tools
 下載 [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools)，解壓縮後將目錄加入 PATH。
 
 **Linux（Ubuntu/Debian）：**
+
 ```bash
 sudo apt install adb
 ```
 
 **驗證安裝：**
+
 ```bash
 adb version
 # Android Debug Bridge version x.x.x
@@ -228,28 +232,28 @@ Android 手機
 
 ### 播放隨機性（反偵測）
 
-| 機制 | 數值 |
-|------|------|
-| 速度波動 | ±25% |
-| GPS 抖動 | ±2 公尺 |
-| Tick 間隔波動 | ±20% |
-| 基礎更新頻率 | 500ms |
+| 機制          | 數值    |
+| ------------- | ------- |
+| 速度波動      | ±25%    |
+| GPS 抖動      | ±2 公尺 |
+| Tick 間隔波動 | ±20%    |
+| 基礎更新頻率  | 500ms   |
 
 使用遞迴 `setTimeout`（非 `setInterval`）實現不等間隔更新，模擬真實行走的不規律性。
 
 ### localStorage 資料結構
 
-| Key | 內容 |
-|-----|------|
-| `fakegps_lat` / `fakegps_lng` | 最後確認座標 |
-| `fakegps_zoom` | 地圖縮放等級 |
-| `fakegps_speed` | 速度（km/h）|
-| `fakegps_step` | 微調距離（公尺）|
-| `fakegps_waypoints` | 航點陣列 |
-| `fakegps_fav_locations` | 最愛地點清單 |
-| `fakegps_fav_routes` | 最愛路徑清單 |
-| `fakegps_history` | 位置歷史（最多 10 筆）|
-| `fakegps_gmaps_key` | Google Maps API Key |
+| Key                           | 內容                   |
+| ----------------------------- | ---------------------- |
+| `fakegps_lat` / `fakegps_lng` | 最後確認座標           |
+| `fakegps_zoom`                | 地圖縮放等級           |
+| `fakegps_speed`               | 速度（km/h）           |
+| `fakegps_step`                | 微調距離（公尺）       |
+| `fakegps_waypoints`           | 航點陣列               |
+| `fakegps_fav_locations`       | 最愛地點清單           |
+| `fakegps_fav_routes`          | 最愛路徑清單           |
+| `fakegps_history`             | 位置歷史（最多 10 筆） |
+| `fakegps_gmaps_key`           | Google Maps API Key    |
 
 ---
 
@@ -284,6 +288,7 @@ Android 手機
 本專案採用 [MIT License](LICENSE) 授權。
 
 ---
+
 ---
 
 # 🗺️ Android Fake GPS Controller
@@ -311,11 +316,11 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 
 ## 📚 Documentation
 
-| Document | Best for |
-|----------|---------|
-| **This page (README)** | Feature overview & technical reference |
-| [⚡ Quick Install (quickinstall.md)](quickinstall.md) | Developers familiar with CLI — get running fast |
-| [📖 Full Beginner Guide (tutor.md)](tutor.md) | Users with no programming experience — zero to done |
+| Document                                              | Best for                                            |
+| ----------------------------------------------------- | --------------------------------------------------- |
+| **This page (README)**                                | Feature overview & technical reference              |
+| [⚡ Quick Install (quickinstall.md)](quickinstall.md) | Developers familiar with CLI — get running fast     |
+| [📖 Full Beginner Guide (tutor.md)](tutor.md)         | Users with no programming experience — zero to done |
 
 ---
 
@@ -338,12 +343,12 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 
 ## Requirements
 
-| Item | Requirement |
-|------|-------------|
-| Node.js | 14.0 or higher |
-| ADB (Android Debug Bridge) | Any version |
-| Android device | Android 8.0+ (10+ recommended) |
-| Google Maps API Key | Optional; Maps JavaScript API + Places API (leave blank to use free OpenStreetMap) |
+| Item                       | Requirement                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| Node.js                    | 14.0 or higher                                                                     |
+| ADB (Android Debug Bridge) | Any version                                                                        |
+| Android device             | Android 8.0+ (10+ recommended)                                                     |
+| Google Maps API Key        | Optional; Maps JavaScript API + Places API (leave blank to use free OpenStreetMap) |
 
 ---
 
@@ -382,6 +387,7 @@ After opening the app, you'll find a **Google Maps API Key** input at the top of
 - **Enter a key**: Switches to Google Maps with Places Autocomplete
 
 > **How to get an API Key:**
+>
 > 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 > 2. Create or select a project
 > 3. Enable **Maps JavaScript API** and **Places API**
@@ -407,6 +413,7 @@ Go to **Developer Options** → Enable **USB Debugging**
 ### Step 3: Install ADB
 
 **macOS (recommended):**
+
 ```bash
 brew install android-platform-tools
 ```
@@ -415,11 +422,13 @@ brew install android-platform-tools
 Download [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools), extract, and add the directory to your PATH.
 
 **Linux (Ubuntu/Debian):**
+
 ```bash
 sudo apt install adb
 ```
 
 **Verify installation:**
+
 ```bash
 adb version
 # Android Debug Bridge version x.x.x
@@ -516,28 +525,28 @@ Android Device
 
 ### Anti-Detection Randomness
 
-| Mechanism | Value |
-|-----------|-------|
-| Speed variance | ±25% |
-| GPS jitter | ±2 meters |
-| Tick interval variance | ±20% |
-| Base update frequency | 500ms |
+| Mechanism              | Value     |
+| ---------------------- | --------- |
+| Speed variance         | ±25%      |
+| GPS jitter             | ±2 meters |
+| Tick interval variance | ±20%      |
+| Base update frequency  | 500ms     |
 
 Uses recursive `setTimeout` (not `setInterval`) for variable-interval updates, simulating the irregular nature of real walking.
 
 ### localStorage Schema
 
-| Key | Contents |
-|-----|----------|
-| `fakegps_lat` / `fakegps_lng` | Last confirmed coordinates |
-| `fakegps_zoom` | Map zoom level |
-| `fakegps_speed` | Speed (km/h) |
-| `fakegps_step` | Step distance (meters) |
-| `fakegps_waypoints` | Waypoints array |
-| `fakegps_fav_locations` | Saved favorite locations |
-| `fakegps_fav_routes` | Saved favorite routes |
-| `fakegps_history` | Location history (up to 10 entries) |
-| `fakegps_gmaps_key` | Google Maps API Key |
+| Key                           | Contents                            |
+| ----------------------------- | ----------------------------------- |
+| `fakegps_lat` / `fakegps_lng` | Last confirmed coordinates          |
+| `fakegps_zoom`                | Map zoom level                      |
+| `fakegps_speed`               | Speed (km/h)                        |
+| `fakegps_step`                | Step distance (meters)              |
+| `fakegps_waypoints`           | Waypoints array                     |
+| `fakegps_fav_locations`       | Saved favorite locations            |
+| `fakegps_fav_routes`          | Saved favorite routes               |
+| `fakegps_history`             | Location history (up to 10 entries) |
+| `fakegps_gmaps_key`           | Google Maps API Key                 |
 
 ---
 
