@@ -14,6 +14,9 @@ let routeCurrentPos = null; // { lat, lng } 播放中的當前座標
 // Android 版本自動偵測：Android 8+（API 26+）需使用 start-foreground-service
 let useForegroundService = false;
 
+// 裝置驅動類型：'android' | 'ios' | null
+let currentDriver = null;
+
 // GPS Keepalive 狀態：定時重送最後一個座標，防止手機回到真實位置
 let lastLocation = null;    // { lat, lng }
 let keepaliveTimer = null;
@@ -31,11 +34,16 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// 執行 adb 送座標（fire and forget）
+// 執行送座標（根據裝置類型選擇驅動）
 function sendLocation(lat, lng) {
-  const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-  const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-  exec(cmd, () => {});
+  if (currentDriver === 'android') {
+    const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
+    const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
+    exec(cmd, () => {});
+  } else if (currentDriver === 'ios') {
+    const cmd = `pymobiledevice3 developer simulate-location set -- ${lat} ${lng}`;
+    exec(cmd, () => {});
+  }
 }
 
 // 啟動 keepalive：儲存座標並定時重送
