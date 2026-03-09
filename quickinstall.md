@@ -25,6 +25,12 @@ adb install appium-settings.apk
 
 > APK 已包含於專案根目錄。如需自行取得最新版，請至 [Appium Settings Releases](https://github.com/appium/io.appium.settings/releases) 下載。
 
+> ⚠️ **請勿直接開啟 Appium Settings App**（介面會閃退，正常現象）。請由手機設定授予位置權限：
+> **設定 → 應用程式 → Appium Settings → 權限 → 位置 → 一律允許**
+>
+> ⚠️ **Do not open the Appium Settings app directly** (it will crash — this is expected). Grant location permission via phone settings instead:
+> **Settings → Apps → Appium Settings → Permissions → Location → Allow all the time**
+
 手機端：**開發者選項 → 選取模擬位置應用程式 → Appium Settings**
 
 On your phone: **Developer Options → Select mock location app → Appium Settings**
