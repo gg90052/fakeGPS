@@ -17,6 +17,7 @@
 
 <a href='https://ko-fi.com/I3I41GR33G' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 <br />
+藍新可支援超商小額付費
 <a href='https://core.newebpay.com/EPG/comment_helper/t9gZwO' target='_blank'><img height='100' style='border:0px;height:100px;' src='https://ez2.app/wp-content/uploads/2025/03/spgateway_logo.png' border='0' alt='藍新金流' /></a>
 
 ---
