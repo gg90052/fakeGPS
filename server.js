@@ -97,7 +97,7 @@ app.get('/api/device', (req, res) => {
 
     // Android 未找到，嘗試偵測 iOS
     exec('pymobiledevice3 usbmux list', (iosError, iosStdout) => {
-      if (iosError || !iosStdout.trim() || iosStdout.trim() === '[]') {
+      if (iosError || !iosStdout?.trim() || iosStdout.trim() === '[]') {
         currentDriver = null;
         stopKeepalive();
         return res.json({ device: null, platform: null });
