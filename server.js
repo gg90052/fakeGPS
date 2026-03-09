@@ -1,5 +1,4 @@
 const express = require('express');
-// exec 將用於執行 adb shell 指令（Task 2 起使用）
 const { exec } = require('child_process');
 const path = require('path');
 
@@ -44,6 +43,7 @@ function sendLocation(lat, lng) {
   } else if (currentDriver === 'ios') {
     cmd = `pymobiledevice3 developer simulate-location set -- "${lat}" "${lng}"`;
   }
+  // 刻意 fire-and-forget：指令失敗時由 keepalive 機制定時重試
   if (cmd) exec(cmd, () => {});
 }
 
