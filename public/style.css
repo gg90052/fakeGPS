@@ -1,0 +1,308 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  display: flex;
+  height: 100vh;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+#sidebar {
+  width: 360px;
+  min-width: 360px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 16px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#sidebar h2 {
+  font-size: 16px;
+  color: #cba6f7;
+  margin-bottom: 4px;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #313244;
+  border-radius: 8px;
+}
+
+label { font-size: 12px; color: #a6adc8; }
+
+input[type="number"], input[type="range"], input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  background: #45475a;
+  border: 1px solid #585b70;
+  border-radius: 4px;
+  color: #cdd6f4;
+  font-size: 13px;
+}
+
+button {
+  padding: 7px 12px;
+  background: #89b4fa;
+  color: #1e1e2e;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+button:disabled {
+  background: #45475a;
+  color: #585b70;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) { background: #b4d0fb; }
+
+#device-status {
+  font-size: 12px;
+  color: #a6e3a1;
+  background: #1e1e2e;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* D-Pad — 3x3 Grid 八方向 */
+#dpad {
+  display: grid;
+  grid-template-columns: 40px 40px 40px;
+  grid-template-rows: 40px 40px 40px;
+  gap: 4px;
+  justify-content: center;
+  margin: 4px auto;
+}
+#btn-up-left    { grid-column: 1; grid-row: 1; }
+#btn-up         { grid-column: 2; grid-row: 1; }
+#btn-up-right   { grid-column: 3; grid-row: 1; }
+#btn-left       { grid-column: 1; grid-row: 2; }
+#btn-center     { grid-column: 2; grid-row: 2; background: #585b70; }
+#btn-right      { grid-column: 3; grid-row: 2; }
+#btn-down-left  { grid-column: 1; grid-row: 3; }
+#btn-down       { grid-column: 2; grid-row: 3; }
+#btn-down-right { grid-column: 3; grid-row: 3; }
+#dpad button { width: 40px; height: 40px; font-size: 16px; padding: 0; user-select: none; }
+
+/* 航點清單 */
+#waypoint-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+#waypoint-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1e1e2e;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+#waypoint-list li button {
+  padding: 2px 6px;
+  background: #f38ba8;
+  font-size: 11px;
+}
+
+#speed-display { font-size: 12px; color: #89b4fa; }
+
+#map-wrapper {
+  flex: 1;
+  position: relative;
+  height: 100vh;
+}
+
+#map { width: 100%; height: 100%; }
+
+#status-msg {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 46, 0.88);
+  color: #a6e3a1;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(166, 227, 161, 0.25);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* GPS Keepalive 鎖定狀態列 */
+#keepalive-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+#keepalive-indicator {
+  color: #a6e3a1;
+  flex: 1;
+}
+#btn-keepalive-toggle {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+/* 最愛地點 / 最愛路徑 清單 */
+#fav-location-list,
+#fav-route-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+#fav-location-list li,
+#fav-route-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1e1e2e;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+#fav-location-list li span,
+#fav-route-list li span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#fav-location-list li .btn-load,
+#fav-route-list li .btn-load {
+  padding: 2px 6px;
+  background: #a6e3a1;
+  color: #1e1e2e;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+#fav-location-list li .btn-del,
+#fav-route-list li .btn-del {
+  padding: 2px 6px;
+  background: #f38ba8;
+  color: #1e1e2e;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* 位置設定 — 操作按鈕列 */
+#location-action-row { display: flex; gap: 6px; align-items: center; }
+#btn-confirm-location { flex: 1; background: #a6e3a1; color: #1e1e2e; font-size: 13px; }
+#btn-confirm-location:hover:not(:disabled) { background: #c4f0c0; }
+
+/* 「↩ 上一次」— 圓形圖示按鈕（類似 Google Maps 定位按鈕） */
+#btn-back-location {
+  width: 36px; height: 36px; min-width: 36px;
+  border-radius: 50%;
+  background: #313244;
+  color: #cdd6f4;
+  font-size: 16px;
+  padding: 0;
+  font-weight: 400;
+  border: 2px solid #585b70;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+#btn-back-location:hover:not(:disabled) {
+  background: #f9e2af; color: #1e1e2e; border-color: #f9e2af;
+}
+#btn-back-location:disabled {
+  background: #1e1e2e; color: #45475a; border-color: #313244; box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* 歷史記錄 <details> */
+#history-details {
+  background: #1e1e2e;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+#history-details summary {
+  font-size: 12px; color: #a6adc8; cursor: pointer;
+  user-select: none; list-style: none; padding: 2px 0;
+}
+#history-details summary::-webkit-details-marker { display: none; }
+#history-details summary::before { content: '▶ '; font-size: 10px; color: #585b70; }
+#history-details[open] summary::before { content: '▼ '; }
+
+/* 歷史清單 */
+#history-list {
+  list-style: none; display: flex; flex-direction: column;
+  gap: 4px; margin-top: 6px; max-height: 180px; overflow-y: auto;
+}
+#history-list .history-item {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #313244; padding: 4px 8px; border-radius: 4px;
+  font-size: 12px; gap: 4px;
+}
+#history-list .history-item span {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: 'Courier New', monospace; color: #cdd6f4;
+}
+#history-list .history-item .btn-load {
+  padding: 2px 6px; background: #a6e3a1; color: #1e1e2e;
+  font-size: 11px; flex-shrink: 0;
+}
+
+/* Leaflet 容器 */
+.leaflet-container { width: 100%; height: 100%; }
+
+/* 航點 marker（Leaflet divIcon） */
+.wp-marker { background: transparent; border: none; }
+.wp-marker-circle {
+  width: 22px; height: 22px;
+  background: #cba6f7; border: 2px solid #1e1e2e; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.wp-label { font-size: 11px; font-weight: 700; color: #1e1e2e; user-select: none; }
+
+/* 主要位置 marker（Leaflet divIcon） */
+.main-marker { background: transparent; border: none; }
+.main-marker-pin {
+  width: 14px; height: 14px;
+  background: #f38ba8; border: 2px solid #1e1e2e;
+  border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+}
+
+/* API Key section */
+#apikey-section { gap: 6px; }
+#apikey-status { font-size: 11px; color: #a6adc8; margin-top: 2px; }
+
+/* Google Places Autocomplete 深色主題 */
+.pac-container {
+  background: #313244;
+  border: 1px solid #585b70;
+  border-radius: 4px;
+  font-family: system-ui, sans-serif;
+}
+.pac-item {
+  color: #cdd6f4;
+  border-top: 1px solid #45475a;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.pac-item:hover { background: #45475a; }
+.pac-item-query { color: #89b4fa; }
+.pac-icon { display: none; }
