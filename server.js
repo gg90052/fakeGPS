@@ -1,5 +1,5 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const path = require('path');
 
 const app = express();
@@ -15,6 +15,10 @@ let useForegroundService = false;
 
 // 裝置驅動類型：'android' | 'ios' | null
 let currentDriver = null;
+
+// iOS DVT 常駐程式（ios_location_daemon.py 子進程）
+let iosProcess = null;
+let iosDaemonReady = false;
 
 // GPS Keepalive 狀態：定時重送最後一個座標，防止手機回到真實位置
 let lastLocation = null;    // { lat, lng }
@@ -33,18 +37,48 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// 啟動 iOS DVT 常駐程式
+function startIosDaemon() {
+  stopIosDaemon();
+  const daemonPath = path.join(__dirname, 'ios_location_daemon.py');
+  iosProcess = spawn('python3', [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+  iosDaemonReady = false;
+
+  iosProcess.stdout.on('data', (data) => {
+    const msg = data.toString().trim();
+    if (msg.includes('READY')) iosDaemonReady = true;
+  });
+  iosProcess.stderr.on('data', (data) => {
+    console.error('[ios-daemon]', data.toString().trim());
+  });
+  iosProcess.on('close', () => {
+    iosProcess = null;
+    iosDaemonReady = false;
+    if (currentDriver === 'ios') currentDriver = null;
+  });
+}
+
+// 停止 iOS DVT 常駐程式
+function stopIosDaemon() {
+  if (iosProcess) {
+    iosProcess.kill('SIGTERM');
+    iosProcess = null;
+  }
+  iosDaemonReady = false;
+}
+
 // 執行送座標（根據裝置類型選擇驅動）
 function sendLocation(lat, lng) {
   if (!isFinite(lat) || !isFinite(lng)) return;
-  let cmd;
   if (currentDriver === 'android') {
     const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-    cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-  } else if (currentDriver === 'ios') {
-    cmd = `pymobiledevice3 developer simulate-location set -- "${lat}" "${lng}"`;
+    const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
+    // 刻意 fire-and-forget：指令失敗時由 keepalive 機制定時重試
+    exec(cmd, () => {});
+  } else if (currentDriver === 'ios' && iosProcess && iosDaemonReady) {
+    // 透過 stdin 管線傳送座標給持久 DVT daemon
+    iosProcess.stdin.write(`${lat},${lng}\n`);
   }
-  // 刻意 fire-and-forget：指令失敗時由 keepalive 機制定時重試
-  if (cmd) exec(cmd, () => {});
 }
 
 // 啟動 keepalive：儲存座標並定時重送
@@ -89,6 +123,7 @@ app.get('/api/device', (req, res) => {
           const sdk = parseInt((sdkOut || '').trim(), 10);
           useForegroundService = !isNaN(sdk) && sdk >= 26;
           currentDriver = 'android';
+          stopIosDaemon();
           res.json({ device, platform: 'android', androidSdk: isNaN(sdk) ? null : sdk });
         });
         return;
@@ -100,6 +135,7 @@ app.get('/api/device', (req, res) => {
       if (iosError || !iosStdout?.trim() || iosStdout.trim() === '[]') {
         currentDriver = null;
         stopKeepalive();
+        stopIosDaemon();
         return res.json({ device: null, platform: null });
       }
       try {
@@ -107,14 +143,17 @@ app.get('/api/device', (req, res) => {
         if (!Array.isArray(devices) || devices.length === 0) {
           currentDriver = null;
           stopKeepalive();
+          stopIosDaemon();
           return res.json({ device: null, platform: null });
         }
         const iosDevice = devices[0].DeviceName || devices[0].UniqueDeviceID || 'iOS Device';
         currentDriver = 'ios';
+        startIosDaemon();
         res.json({ device: iosDevice, platform: 'ios' });
       } catch {
         currentDriver = null;
         stopKeepalive();
+        stopIosDaemon();
         res.json({ device: null, platform: null });
       }
     });
