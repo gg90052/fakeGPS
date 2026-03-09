@@ -29,6 +29,30 @@ adb install appium-settings.apk
 
 On your phone: **Developer Options → Select mock location app → Appium Settings**
 
+## 📱 iOS 裝置設定（iOS 17+，選用）
+
+> Android 使用者可跳過
+
+| 步驟 | 指令 / 說明 |
+|------|------------|
+| 1. 手機開啟開發者模式 | `設定 → 隱私權與安全性 → 開發者模式` |
+| 2. 安裝 Xcode 15+ | 從 Mac App Store 安裝 |
+| 3. 安裝 pymobiledevice3 | `pip3 install pymobiledevice3` |
+| 4. 啟動 tunnel（每次重開機需執行） | `sudo pymobiledevice3 remote tunneld` |
+| 5. 連接 USB，信任電腦 | 手機跳出提示時點「信任」 |
+
+## 📱 iOS Device Setup (iOS 17+, Optional)
+
+> Android users can skip this section
+
+| Step | Command / Note |
+|------|----------------|
+| 1. Enable Developer Mode | `Settings → Privacy & Security → Developer Mode` |
+| 2. Install Xcode 15+ | From Mac App Store |
+| 3. Install pymobiledevice3 | `pip3 install pymobiledevice3` |
+| 4. Start tunnel (run after each reboot) | `sudo pymobiledevice3 remote tunneld` |
+| 5. Connect USB, trust computer | Tap "Trust" when prompted on device |
+
 ## 3. 啟動 / Start
 
 ```bash
