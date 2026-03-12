@@ -58,6 +58,39 @@
 | Android 手機               | Android 8.0 以上（建議 10+）                                                 |
 | Google Maps API Key        | 選用；啟用 Maps JavaScript API 與 Places API（留空則使用免費 OpenStreetMap） |
 
+### iOS 裝置前置需求（iOS 17+）
+
+> iOS 支援需額外安裝工具，Android 使用者可跳過此段。
+
+**macOS（推薦）：**
+
+1. 手機開啟開發者模式：`設定 → 隱私權與安全性 → 開發者模式`
+2. 電腦安裝 Xcode 15+（pymobiledevice3 依賴其底層框架）
+3. 電腦安裝 pymobiledevice3：
+   ```bash
+   pip3 install pymobiledevice3
+   ```
+4. 每次重開電腦後，啟動前需先執行 tunnel（需要 sudo 密碼）：
+   ```bash
+   sudo pymobiledevice3 remote tunneld
+   ```
+5. 手機連接 USB，信任此電腦
+
+**Windows（進階，穩定性較低）：**
+
+1. 手機開啟開發者模式：`設定 → 隱私權與安全性 → 開發者模式`
+2. 安裝 Python 3（[python.org](https://www.python.org)，安裝時勾選「Add Python to PATH」）
+3. 安裝 pymobiledevice3：
+   ```powershell
+   pip install pymobiledevice3
+   ```
+4. 安裝 [WireGuard for Windows](https://www.wireguard.com/install/)（包含 tunneld 所需的 WinTun 驅動）
+5. 每次重開電腦後，以**系統管理員**身份開啟 PowerShell，執行 tunnel：
+   ```powershell
+   pymobiledevice3 remote tunneld
+   ```
+6. 手機連接 USB，信任此電腦
+
 ---
 
 ## 🚀 安裝與啟動
@@ -354,6 +387,39 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 | ADB (Android Debug Bridge) | Any version                                                                        |
 | Android device             | Android 8.0+ (10+ recommended)                                                     |
 | Google Maps API Key        | Optional; Maps JavaScript API + Places API (leave blank to use free OpenStreetMap) |
+
+### iOS Device Prerequisites (iOS 17+)
+
+> iOS support requires additional tools. Android users can skip this section.
+
+**macOS (recommended):**
+
+1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
+2. Install Xcode 15+ on Mac (pymobiledevice3 depends on its underlying frameworks)
+3. Install pymobiledevice3:
+   ```bash
+   pip3 install pymobiledevice3
+   ```
+4. After each computer reboot, start the tunnel before launching (requires sudo password):
+   ```bash
+   sudo pymobiledevice3 remote tunneld
+   ```
+5. Connect the device via USB and trust the computer
+
+**Windows (advanced, less stable):**
+
+1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
+2. Install Python 3 from [python.org](https://www.python.org) — check "Add Python to PATH" during setup
+3. Install pymobiledevice3:
+   ```powershell
+   pip install pymobiledevice3
+   ```
+4. Install [WireGuard for Windows](https://www.wireguard.com/install/) (includes the WinTun driver required by tunneld)
+5. After each reboot, open PowerShell **as Administrator** and start the tunnel:
+   ```powershell
+   pymobiledevice3 remote tunneld
+   ```
+6. Connect the device via USB and trust the computer
 
 ---
 

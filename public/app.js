@@ -759,7 +759,13 @@ async function refreshDevice() {
   try {
     const res = await fetch('/api/device');
     const data = await res.json();
-    document.getElementById('device-status').textContent = data.device || '未偵測';
+    if (data.device) {
+      const PLATFORM_LABELS = { ios: ' (iOS)', android: ' (Android)' };
+      const platformLabel = PLATFORM_LABELS[data.platform] ?? '';
+      document.getElementById('device-status').textContent = data.device + platformLabel;
+    } else {
+      document.getElementById('device-status').textContent = '未偵測';
+    }
   } catch {
     document.getElementById('device-status').textContent = '無法連線到後端';
   }

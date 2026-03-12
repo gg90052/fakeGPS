@@ -1,6 +1,5 @@
 const express = require('express');
-// exec 將用於執行 adb shell 指令（Task 2 起使用）
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const path = require('path');
 
 const app = express();
@@ -13,6 +12,13 @@ let routeCurrentPos = null; // { lat, lng } 播放中的當前座標
 
 // Android 版本自動偵測：Android 8+（API 26+）需使用 start-foreground-service
 let useForegroundService = false;
+
+// 裝置驅動類型：'android' | 'ios' | null
+let currentDriver = null;
+
+// iOS DVT 常駐程式（ios_location_daemon.py 子進程）
+let iosProcess = null;
+let iosDaemonReady = false;
 
 // GPS Keepalive 狀態：定時重送最後一個座標，防止手機回到真實位置
 let lastLocation = null;    // { lat, lng }
@@ -31,11 +37,48 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// 執行 adb 送座標（fire and forget）
+// 啟動 iOS DVT 常駐程式
+function startIosDaemon() {
+  stopIosDaemon();
+  const daemonPath = path.join(__dirname, 'ios_location_daemon.py');
+  iosProcess = spawn('python3', [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+  iosDaemonReady = false;
+
+  iosProcess.stdout.on('data', (data) => {
+    const msg = data.toString().trim();
+    if (msg.includes('READY')) iosDaemonReady = true;
+  });
+  iosProcess.stderr.on('data', (data) => {
+    console.error('[ios-daemon]', data.toString().trim());
+  });
+  iosProcess.on('close', () => {
+    iosProcess = null;
+    iosDaemonReady = false;
+    if (currentDriver === 'ios') currentDriver = null;
+  });
+}
+
+// 停止 iOS DVT 常駐程式
+function stopIosDaemon() {
+  if (iosProcess) {
+    iosProcess.kill('SIGTERM');
+    iosProcess = null;
+  }
+  iosDaemonReady = false;
+}
+
+// 執行送座標（根據裝置類型選擇驅動）
 function sendLocation(lat, lng) {
-  const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-  const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-  exec(cmd, () => {});
+  if (!isFinite(lat) || !isFinite(lng)) return;
+  if (currentDriver === 'android') {
+    const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
+    const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
+    // 刻意 fire-and-forget：指令失敗時由 keepalive 機制定時重試
+    exec(cmd, () => {});
+  } else if (currentDriver === 'ios' && iosProcess && iosDaemonReady) {
+    // 透過 stdin 管線傳送座標給持久 DVT daemon
+    iosProcess.stdin.write(`${lat},${lng}\n`);
+  }
 }
 
 // 啟動 keepalive：儲存座標並定時重送
@@ -69,23 +112,50 @@ function addGpsJitter(lat, lng, maxMeters) {
 
 // 偵測 ADB 連線裝置，並自動偵測 Android 版本決定 service 指令
 app.get('/api/device', (req, res) => {
+  // 先嘗試偵測 Android
   exec('adb devices', (error, stdout) => {
-    if (error) {
-      return res.json({ device: null });
+    if (!error) {
+      const lines = stdout.split('\n').filter(l => l.trim() && !l.startsWith('List of devices'));
+      const connected = lines.find(l => l.includes('\tdevice'));
+      if (connected) {
+        const device = connected.split('\t')[0].trim();
+        exec('adb shell getprop ro.build.version.sdk', (err, sdkOut) => {
+          const sdk = parseInt((sdkOut || '').trim(), 10);
+          useForegroundService = !isNaN(sdk) && sdk >= 26;
+          currentDriver = 'android';
+          stopIosDaemon();
+          res.json({ device, platform: 'android', androidSdk: isNaN(sdk) ? null : sdk });
+        });
+        return;
+      }
     }
-    const lines = stdout.split('\n').filter(l => l.trim() && !l.startsWith('List of devices'));
-    const connected = lines.find(l => l.includes('\tdevice'));
-    if (!connected) {
-      useForegroundService = false;
-      stopKeepalive();
-      return res.json({ device: null });
-    }
-    const device = connected.split('\t')[0].trim();
-    // 偵測 Android SDK 版本，>= 26（Android 8.0）改用 start-foreground-service
-    exec('adb shell getprop ro.build.version.sdk', (err, sdkOut) => {
-      const sdk = parseInt((sdkOut || '').trim(), 10);
-      useForegroundService = !isNaN(sdk) && sdk >= 26;
-      res.json({ device, androidSdk: isNaN(sdk) ? null : sdk });
+
+    // Android 未找到，嘗試偵測 iOS
+    exec('pymobiledevice3 usbmux list', (iosError, iosStdout) => {
+      if (iosError || !iosStdout?.trim() || iosStdout.trim() === '[]') {
+        currentDriver = null;
+        stopKeepalive();
+        stopIosDaemon();
+        return res.json({ device: null, platform: null });
+      }
+      try {
+        const devices = JSON.parse(iosStdout);
+        if (!Array.isArray(devices) || devices.length === 0) {
+          currentDriver = null;
+          stopKeepalive();
+          stopIosDaemon();
+          return res.json({ device: null, platform: null });
+        }
+        const iosDevice = devices[0].DeviceName || devices[0].UniqueDeviceID || 'iOS Device';
+        currentDriver = 'ios';
+        startIosDaemon();
+        res.json({ device: iosDevice, platform: 'ios' });
+      } catch {
+        currentDriver = null;
+        stopKeepalive();
+        stopIosDaemon();
+        res.json({ device: null, platform: null });
+      }
     });
   });
 });
@@ -99,15 +169,12 @@ app.post('/api/location', (req, res) => {
   if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return res.json({ success: false, error: '座標超出有效範圍（lat: -90~90, lng: -180~180）' });
   }
-  const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-  const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-  exec(cmd, (error) => {
-    if (error) {
-      return res.json({ success: false, error: error.message });
-    }
-    startKeepalive(lat, lng);
-    res.json({ success: true });
-  });
+  if (!currentDriver) {
+    return res.json({ success: false, error: '尚未連接裝置' });
+  }
+  sendLocation(lat, lng);
+  startKeepalive(lat, lng);
+  res.json({ success: true });
 });
 
 app.post('/api/route/start', (req, res) => {

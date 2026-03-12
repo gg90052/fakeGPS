@@ -11,19 +11,20 @@
 2. [你需要準備什麼](#2-你需要準備什麼)
 3. [安裝 Node.js（讓程式能跑起來）](#3-安裝-nodejs讓程式能跑起來)
 4. [安裝 ADB（電腦與手機的橋樑）](#4-安裝-adb電腦與手機的橋樑)
-5. [設定 Android 手機](#5-設定-android-手機)
-6. [安裝 Appium Settings App](#6-安裝-appium-settings-app)
-7. [下載並啟動 Fake GPS 工具](#7-下載並啟動-fake-gps-工具)
-8. [第一次打開網頁：認識畫面](#8-第一次打開網頁認識畫面)
-9. [功能教學：設定假 GPS 位置](#9-功能教學設定假-gps-位置)
-10. [功能教學：D-Pad 微調位置](#10-功能教學d-pad-微調位置)
-11. [功能教學：規劃路徑並播放移動](#11-功能教學規劃路徑並播放移動)
-12. [功能教學：最愛地點與最愛路徑](#12-功能教學最愛地點與最愛路徑)
-13. [功能教學：GPS 鎖定（Keepalive）](#13-功能教學gps-鎖定keepalive)
-14. [功能教學：歷史記錄](#14-功能教學歷史記錄)
-15. [（選用）使用 Google Maps](#15-選用使用-google-maps)
-16. [常見問題與解決方法](#16-常見問題與解決方法)
-17. [名詞解說](#17-名詞解說)
+5. [iOS 裝置設定（iOS 17+）](#5-ios-裝置設定ios-17)
+6. [設定 Android 手機](#6-設定-android-手機)
+7. [安裝 Appium Settings App](#7-安裝-appium-settings-app)
+8. [下載並啟動 Fake GPS 工具](#8-下載並啟動-fake-gps-工具)
+9. [第一次打開網頁：認識畫面](#9-第一次打開網頁認識畫面)
+10. [功能教學：設定假 GPS 位置](#10-功能教學設定假-gps-位置)
+11. [功能教學：D-Pad 微調位置](#11-功能教學d-pad-微調位置)
+12. [功能教學：規劃路徑並播放移動](#12-功能教學規劃路徑並播放移動)
+13. [功能教學：最愛地點與最愛路徑](#13-功能教學最愛地點與最愛路徑)
+14. [功能教學：GPS 鎖定（Keepalive）](#14-功能教學gps-鎖定keepalive)
+15. [功能教學：歷史記錄](#15-功能教學歷史記錄)
+16. [（選用）使用 Google Maps](#16-選用使用-google-maps)
+17. [常見問題與解決方法](#17-常見問題與解決方法)
+18. [名詞解說](#18-名詞解說)
 
 ---
 
@@ -194,7 +195,115 @@ sudo apt install adb -y
 
 ---
 
-## 5. 設定 Android 手機
+## 5. iOS 裝置設定（iOS 17+）
+
+> **只有 iPhone 使用者才需要看這章**，Android 手機使用者可以直接跳到下一章。
+
+### 為什麼 iPhone 需要額外設定？
+
+iOS 的保護機制比 Android 嚴格，假 GPS 需要透過蘋果官方開發工具的授權管道才能注入，不能像 Android 那樣直接用 ADB 送座標。我們用的工具叫 **pymobiledevice3**，它是蘋果官方開發流程的 Python 版本實作。
+
+### 前置條件
+
+| 項目 | 需求 |
+|------|------|
+| 電腦作業系統 | **macOS**（推薦）或 **Windows 10/11**（進階，需額外步驟）|
+| iPhone | iOS 17 或以上 |
+| Xcode（macOS 限定）| 15 或以上，從 Mac App Store 安裝（約 7–14 GB）|
+
+> **Windows 使用者注意**：iOS 17+ 的 tunnel 在 Windows 上需要安裝 WinTun 驅動程式，穩定性比 Mac 差，步驟也較繁瑣。建議有條件的話優先使用 Mac。
+
+---
+
+### 步驟一：開啟 iPhone 開發者模式
+
+1. 打開 iPhone 的「設定」
+2. 往下滑，找到「隱私權與安全性」
+3. 滑到最底部，找到「開發者模式」
+4. 開啟開關，手機會要求重新啟動
+5. 重啟後會再次詢問是否確認開啟，點「開啟」
+
+> ⚠️ 開啟後手機右上角不會有任何標示，這是正常的。
+
+---
+
+### 步驟二：安裝 pymobiledevice3
+
+**macOS：** 打開 Terminal（終端機），執行：
+
+```bash
+pip3 install pymobiledevice3
+```
+
+**Windows：** 打開命令提示字元或 PowerShell，執行：
+
+```powershell
+pip install pymobiledevice3
+```
+
+> 若出現 `pip: command not found`，請先至 [https://www.python.org](https://www.python.org) 下載安裝 Python 3，安裝時勾選「**Add Python to PATH**」。
+
+安裝完成後，驗證是否成功：
+
+```bash
+pymobiledevice3 --version
+# 看到版本號碼（例如 3.x.x）代表成功
+```
+
+---
+
+### 步驟三：啟動 Tunnel（每次重開電腦需執行）
+
+pymobiledevice3 在 iOS 17+ 需要先建立一個特殊的連線通道（tunnel），這個步驟需要管理員權限。
+
+#### macOS
+
+```bash
+sudo pymobiledevice3 remote tunneld
+```
+
+輸入 Mac 登入密碼後，Terminal 會持續顯示 log 訊息，**這個視窗要一直開著**，不能關掉。
+
+#### Windows（額外前置步驟）
+
+Windows 需要先安裝 **WinTun 驅動程式**，否則 tunnel 無法建立虛擬網路介面：
+
+1. 前往 [https://www.wireguard.com/install/](https://www.wireguard.com/install/) 下載並安裝 **WireGuard for Windows**（WinTun 驅動程式包含在內）
+2. 安裝完成後，以**系統管理員**身份開啟 PowerShell：
+   - 在開始選單搜尋「PowerShell」→ 右鍵 →「以系統管理員身份執行」
+3. 執行：
+   ```powershell
+   pymobiledevice3 remote tunneld
+   ```
+   （Windows 不需要 `sudo`，改為以系統管理員身份執行）
+
+PowerShell 視窗會持續顯示 log 訊息，**保持視窗開著**，不能關掉。
+
+> ⚠️ **Windows 已知限制**：部分 Windows 版本或防毒軟體可能阻擋 WinTun 建立網路介面。若 tunneld 一直無法啟動，建議改用 Mac。
+
+---
+
+### 步驟四：連接 iPhone 並信任電腦
+
+1. 用 USB 連接 iPhone 到電腦
+2. iPhone 螢幕會跳出「是否信任此電腦？」，點「信任」
+3. 輸入 iPhone 密碼確認
+
+---
+
+### 步驟五：驗證偵測到裝置
+
+另開一個新的終端機／PowerShell 視窗（tunnel 那個不要關），執行：
+
+```bash
+pymobiledevice3 usbmux list
+```
+
+如果看到包含你 iPhone 名稱的 JSON 輸出，就代表偵測成功，可以繼續下一步啟動伺服器了。
+
+---
+
+## 6. 設定 Android 手機
 
 這個步驟是在手機上開啟「開發者模式」，這是允許電腦跟手機溝通的必要設定。
 
@@ -257,7 +366,7 @@ List of devices attached
 
 ---
 
-## 6. 安裝 Appium Settings App
+## 7. 安裝 Appium Settings App
 
 Appium Settings 是一個特殊的 App，它負責在手機端接收假 GPS 座標並套用到系統。
 
@@ -308,7 +417,7 @@ Appium Settings 的安裝檔（`appium-settings.apk`）已經包含在這個專�
 
 ---
 
-## 7. 下載並啟動 Fake GPS 工具
+## 8. 下載並啟動 Fake GPS 工具
 
 ### 下載專案
 
@@ -362,6 +471,14 @@ npm install
 
 ### 啟動伺服器
 
+> **📱 iOS 使用者必看（Android 可跳過）**
+>
+> 在執行 `npm start` 之前，請先確認：
+> 1. 另一個終端機視窗已執行 `sudo pymobiledevice3 remote tunneld`（詳見第 5 章步驟三）
+> 2. iPhone 已透過 USB 連接且已信任電腦
+>
+> 若 tunneld 沒有先跑起來，伺服器偵測不到 iPhone。
+
 ```
 npm start
 ```
@@ -386,7 +503,7 @@ http://localhost:3000
 
 ---
 
-## 8. 第一次打開網頁：認識畫面
+## 9. 第一次打開網頁：認識畫面
 
 ![畫面示意](示意圖)
 
@@ -427,18 +544,23 @@ http://localhost:3000
 
 ---
 
-### 確認手機已連線
+### 確認裝置已連線
 
-在左側側邊欄，找到「**ADB 裝置**」區塊。
+在左側側邊欄，找到「**裝置**」區塊。
 
-- 如果顯示一串裝置 ID（例如 `R5CW20XXXXX`）→ 連線成功！
-- 如果顯示「**未偵測到裝置**」→ 請回到[步驟 5](#5-設定-android-手機)確認設定
+**Android 使用者：**
+- 如果顯示一串裝置 ID（例如 `R5CW20XXXXX`）並標示 **[Android]** → 連線成功！
+- 如果顯示「**未偵測到裝置**」→ 請回到[步驟 6](#6-設定-android-手機)確認設定
+
+**iOS 使用者：**
+- 如果顯示你的 iPhone 名稱（例如 `iPhone`）並標示 **[iOS]** → 連線成功！
+- 如果顯示「**未偵測到裝置**」→ 確認 `tunneld` 已在執行，且手機已信任電腦
 
 點「**重新整理**」按鈕可以重新偵測裝置。
 
 ---
 
-## 9. 功能教學：設定假 GPS 位置
+## 10. 功能教學：設定假 GPS 位置
 
 ### 方法一：搜尋地點名稱
 
@@ -482,7 +604,7 @@ http://localhost:3000
 
 ---
 
-## 10. 功能教學：D-Pad 微調位置
+## 11. 功能教學：D-Pad 微調位置
 
 D-Pad 是用來精細調整 GPS 位置的方向控制器，每按一次就移動一小段距離。
 
@@ -508,7 +630,7 @@ D-Pad 是**立即模式**，按下就直接送出給手機，**不需要**再按
 
 ---
 
-## 11. 功能教學：規劃路徑並播放移動
+## 12. 功能教學：規劃路徑並播放移動
 
 這個功能讓你模擬沿著一條路線移動，就像在地圖上行走一樣。
 
@@ -550,7 +672,7 @@ D-Pad 是**立即模式**，按下就直接送出給手機，**不需要**再按
 
 ---
 
-## 12. 功能教學：最愛地點與最愛路徑
+## 13. 功能教學：最愛地點與最愛路徑
 
 這個功能讓你儲存常用的地點和路線，下次可以一鍵載入，不用每次重新設定。
 
@@ -587,7 +709,7 @@ D-Pad 是**立即模式**，按下就直接送出給手機，**不需要**再按
 
 ---
 
-## 13. 功能教學：GPS 鎖定（Keepalive）
+## 14. 功能教學：GPS 鎖定（Keepalive）
 
 ### 為什麼需要這個功能？
 
@@ -610,7 +732,7 @@ Android 系統有時候會把假 GPS 還原回真實位置（尤其是一段時�
 
 ---
 
-## 14. 功能教學：歷史記錄
+## 15. 功能教學：歷史記錄
 
 每次你按「✓ 改變定位」確認位置時，這個位置就會自動記錄在歷史清單裡（最多保留 10 筆）。
 
@@ -624,7 +746,7 @@ Android 系統有時候會把假 GPS 還原回真實位置（尤其是一段時�
 
 ---
 
-## 15. （選用）使用 Google Maps
+## 16. （選用）使用 Google Maps
 
 這個工具預設使用免費的 OpenStreetMap（不需要任何帳號或金鑰）。如果你有 Google Maps API Key，可以切換到 Google Maps，支援更精準的地點搜尋。
 
@@ -653,7 +775,7 @@ Android 系統有時候會把假 GPS 還原回真實位置（尤其是一段時�
 
 ---
 
-## 16. 常見問題與解決方法
+## 17. 常見問題與解決方法
 
 ### ❌ 問題：打開網頁後地圖不顯示
 
@@ -702,7 +824,7 @@ R5CW20XXXXX	device   ← 有這行代表連接成功
 
 這代表這些程式的路徑還沒有加入 PATH。
 
-**ADB 的解決方法**：確認有按照[步驟四的 Windows 部分](#windows-使用者)，將 platform-tools 資料夾加入 PATH。加入後**重新開啟**命令提示字元再試。
+**ADB 的解決方法**：確認有按照[第 4 章的 Windows 部分](#windows-使用者)，將 platform-tools 資料夾加入 PATH。加入後**重新開啟**命令提示字元再試。
 
 **Node.js 的解決方法**：重新執行 Node.js 安裝程式，確保勾選了「Add to PATH」選項，然後重啟電腦。
 
@@ -735,7 +857,41 @@ npm install --registry https://registry.npmmirror.com
 
 ---
 
-### ❌ 問題：MIUI（小米手機）設定 GPS 後還是不動
+### ❌ 問題（iOS）：裝置狀態顯示「未偵測到裝置」
+
+請依序確認：
+
+1. **tunneld 有沒有在執行？** 開一個終端機執行 `sudo pymobiledevice3 remote tunneld`，確認有 log 訊息持續輸出
+2. **iPhone 有沒有跳出「信任此電腦」？** 回到 iPhone 螢幕確認，若沒有跳出，拔掉 USB 重新插
+3. **開發者模式是否已開啟？** 設定 → 隱私權與安全性 → 開發者模式（需要開啟並重啟手機一次）
+4. **pymobiledevice3 是否安裝正確？** 執行 `pymobiledevice3 usbmux list` 看有無輸出
+
+---
+
+### ❌ 問題（iOS）：GPS 設定後 iPhone 的 App 沒有反應
+
+請確認：
+
+1. **iOS 版本是否為 17 以上？** 低於 iOS 17 不支援
+2. **tunneld 是否持續執行中？** 若已關閉，重新執行後在瀏覽器點「重新整理」
+3. **某些 App 可能有自己的防偵測機制**，這超出本工具的範圍
+
+---
+
+### ❌ 問題（iOS）：執行 tunneld 時出現錯誤
+
+常見錯誤與解決方式：
+
+| 錯誤訊息 | 解決方式 |
+|----------|----------|
+| `command not found: pymobiledevice3` | 重新執行 `pip3 install pymobiledevice3` |
+| `xcode-select: error...` | 執行 `xcode-select --install` 安裝 Xcode Command Line Tools |
+| `Permission denied` | 確認前面加了 `sudo`，並輸入 Mac 登入密碼 |
+| iPhone 無法偵測 | 拔除 USB，重啟 tunneld，再重新插上 USB |
+
+---
+
+### ❌ 問題（Android）：MIUI（小米手機）設定 GPS 後還是不動
 
 MIUI 有額外的安全限制。請：
 1. 在手機設定中找到「**Appium Settings**」的 App 資訊
@@ -745,7 +901,7 @@ MIUI 有額外的安全限制。請：
 
 ---
 
-## 17. 名詞解說
+## 18. 名詞解說
 
 本教學中用到的一些專業名詞，如果你不懂，可以在這裡查看簡單的說明。
 
@@ -777,14 +933,23 @@ MIUI 有額外的安全限制。請：
 
 恭喜你！如果你照著這份教學做完了，你應該已經：
 
+**Android 使用者：**
 - ✅ 安裝好 Node.js
 - ✅ 安裝好 ADB
-- ✅ 設定好 Android 手機的開發者選項
-- ✅ 安裝好 Appium Settings
+- ✅ 設定好 Android 手機的開發者選項與 USB 偵錯
+- ✅ 安裝好 Appium Settings 並授予位置權限
 - ✅ 成功啟動 Fake GPS 控制台
 - ✅ 學會使用基本功能
 
-如果過程中遇到任何問題，先查看[常見問題](#16-常見問題與解決方法)，或到專案的 GitHub Issues 頁面回報問題。
+**iOS 使用者：**
+- ✅ 安裝好 Node.js
+- ✅ 安裝好 Xcode 與 pymobiledevice3
+- ✅ 開啟 iPhone 開發者模式
+- ✅ 知道每次使用前要先執行 `sudo pymobiledevice3 remote tunneld`
+- ✅ 成功啟動 Fake GPS 控制台
+- ✅ 學會使用基本功能
+
+如果過程中遇到任何問題，先查看[常見問題](#17-常見問題與解決方法)，或到專案的 GitHub Issues 頁面回報問題。
 
 ---
 
