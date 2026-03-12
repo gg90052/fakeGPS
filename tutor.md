@@ -205,9 +205,15 @@ iOS 的保護機制比 Android 嚴格，假 GPS 需要透過蘋果官方開發�
 
 ### 前置條件
 
-- Mac 電腦（目前 pymobiledevice3 在 Windows/Linux 上對 iOS 17+ 支援有限）
-- iPhone iOS 17 或以上
-- Xcode 15 或以上（需從 Mac App Store 安裝，大小約 7–14 GB）
+| 項目 | 需求 |
+|------|------|
+| 電腦作業系統 | **macOS**（推薦）或 **Windows 10/11**（進階，需額外步驟）|
+| iPhone | iOS 17 或以上 |
+| Xcode（macOS 限定）| 15 或以上，從 Mac App Store 安裝（約 7–14 GB）|
+
+> **Windows 使用者注意**：iOS 17+ 的 tunnel 在 Windows 上需要安裝 WinTun 驅動程式，穩定性比 Mac 差，步驟也較繁瑣。建議有條件的話優先使用 Mac。
+
+---
 
 ### 步驟一：開啟 iPhone 開發者模式
 
@@ -219,31 +225,63 @@ iOS 的保護機制比 Android 嚴格，假 GPS 需要透過蘋果官方開發�
 
 > ⚠️ 開啟後手機右上角不會有任何標示，這是正常的。
 
+---
+
 ### 步驟二：安裝 pymobiledevice3
 
-打開 Terminal（終端機），執行：
+**macOS：** 打開 Terminal（終端機），執行：
 
 ```bash
 pip3 install pymobiledevice3
 ```
 
-安裝完成後，驗證安裝是否成功：
+**Windows：** 打開命令提示字元或 PowerShell，執行：
+
+```powershell
+pip install pymobiledevice3
+```
+
+> 若出現 `pip: command not found`，請先至 [https://www.python.org](https://www.python.org) 下載安裝 Python 3，安裝時勾選「**Add Python to PATH**」。
+
+安裝完成後，驗證是否成功：
 
 ```bash
 pymobiledevice3 --version
+# 看到版本號碼（例如 3.x.x）代表成功
 ```
 
-如果看到版本號碼（例如 `3.x.x`）就代表安裝成功。
+---
 
 ### 步驟三：啟動 Tunnel（每次重開電腦需執行）
 
-pymobiledevice3 在 iOS 17+ 需要先建立一個特殊的連線通道（稱為 tunnel），這個步驟需要管理員權限：
+pymobiledevice3 在 iOS 17+ 需要先建立一個特殊的連線通道（tunnel），這個步驟需要管理員權限。
+
+#### macOS
 
 ```bash
 sudo pymobiledevice3 remote tunneld
 ```
 
-輸入 Mac 的登入密碼後，Terminal 會持續顯示 log 訊息，**這個視窗要一直開著**，不能關掉。
+輸入 Mac 登入密碼後，Terminal 會持續顯示 log 訊息，**這個視窗要一直開著**，不能關掉。
+
+#### Windows（額外前置步驟）
+
+Windows 需要先安裝 **WinTun 驅動程式**，否則 tunnel 無法建立虛擬網路介面：
+
+1. 前往 [https://www.wireguard.com/install/](https://www.wireguard.com/install/) 下載並安裝 **WireGuard for Windows**（WinTun 驅動程式包含在內）
+2. 安裝完成後，以**系統管理員**身份開啟 PowerShell：
+   - 在開始選單搜尋「PowerShell」→ 右鍵 →「以系統管理員身份執行」
+3. 執行：
+   ```powershell
+   pymobiledevice3 remote tunneld
+   ```
+   （Windows 不需要 `sudo`，改為以系統管理員身份執行）
+
+PowerShell 視窗會持續顯示 log 訊息，**保持視窗開著**，不能關掉。
+
+> ⚠️ **Windows 已知限制**：部分 Windows 版本或防毒軟體可能阻擋 WinTun 建立網路介面。若 tunneld 一直無法啟動，建議改用 Mac。
+
+---
 
 ### 步驟四：連接 iPhone 並信任電腦
 
@@ -251,9 +289,11 @@ sudo pymobiledevice3 remote tunneld
 2. iPhone 螢幕會跳出「是否信任此電腦？」，點「信任」
 3. 輸入 iPhone 密碼確認
 
+---
+
 ### 步驟五：驗證偵測到裝置
 
-開一個新的 Terminal 視窗（tunnel 那個不要關），執行：
+另開一個新的終端機／PowerShell 視窗（tunnel 那個不要關），執行：
 
 ```bash
 pymobiledevice3 usbmux list
@@ -431,6 +471,14 @@ npm install
 
 ### 啟動伺服器
 
+> **📱 iOS 使用者必看（Android 可跳過）**
+>
+> 在執行 `npm start` 之前，請先確認：
+> 1. 另一個終端機視窗已執行 `sudo pymobiledevice3 remote tunneld`（詳見第 5 章步驟三）
+> 2. iPhone 已透過 USB 連接且已信任電腦
+>
+> 若 tunneld 沒有先跑起來，伺服器偵測不到 iPhone。
+
 ```
 npm start
 ```
@@ -496,12 +544,17 @@ http://localhost:3000
 
 ---
 
-### 確認手機已連線
+### 確認裝置已連線
 
-在左側側邊欄，找到「**ADB 裝置**」區塊。
+在左側側邊欄，找到「**裝置**」區塊。
 
-- 如果顯示一串裝置 ID（例如 `R5CW20XXXXX`）→ 連線成功！
+**Android 使用者：**
+- 如果顯示一串裝置 ID（例如 `R5CW20XXXXX`）並標示 **[Android]** → 連線成功！
 - 如果顯示「**未偵測到裝置**」→ 請回到[步驟 6](#6-設定-android-手機)確認設定
+
+**iOS 使用者：**
+- 如果顯示你的 iPhone 名稱（例如 `iPhone`）並標示 **[iOS]** → 連線成功！
+- 如果顯示「**未偵測到裝置**」→ 確認 `tunneld` 已在執行，且手機已信任電腦
 
 點「**重新整理**」按鈕可以重新偵測裝置。
 
@@ -804,7 +857,41 @@ npm install --registry https://registry.npmmirror.com
 
 ---
 
-### ❌ 問題：MIUI（小米手機）設定 GPS 後還是不動
+### ❌ 問題（iOS）：裝置狀態顯示「未偵測到裝置」
+
+請依序確認：
+
+1. **tunneld 有沒有在執行？** 開一個終端機執行 `sudo pymobiledevice3 remote tunneld`，確認有 log 訊息持續輸出
+2. **iPhone 有沒有跳出「信任此電腦」？** 回到 iPhone 螢幕確認，若沒有跳出，拔掉 USB 重新插
+3. **開發者模式是否已開啟？** 設定 → 隱私權與安全性 → 開發者模式（需要開啟並重啟手機一次）
+4. **pymobiledevice3 是否安裝正確？** 執行 `pymobiledevice3 usbmux list` 看有無輸出
+
+---
+
+### ❌ 問題（iOS）：GPS 設定後 iPhone 的 App 沒有反應
+
+請確認：
+
+1. **iOS 版本是否為 17 以上？** 低於 iOS 17 不支援
+2. **tunneld 是否持續執行中？** 若已關閉，重新執行後在瀏覽器點「重新整理」
+3. **某些 App 可能有自己的防偵測機制**，這超出本工具的範圍
+
+---
+
+### ❌ 問題（iOS）：執行 tunneld 時出現錯誤
+
+常見錯誤與解決方式：
+
+| 錯誤訊息 | 解決方式 |
+|----------|----------|
+| `command not found: pymobiledevice3` | 重新執行 `pip3 install pymobiledevice3` |
+| `xcode-select: error...` | 執行 `xcode-select --install` 安裝 Xcode Command Line Tools |
+| `Permission denied` | 確認前面加了 `sudo`，並輸入 Mac 登入密碼 |
+| iPhone 無法偵測 | 拔除 USB，重啟 tunneld，再重新插上 USB |
+
+---
+
+### ❌ 問題（Android）：MIUI（小米手機）設定 GPS 後還是不動
 
 MIUI 有額外的安全限制。請：
 1. 在手機設定中找到「**Appium Settings**」的 App 資訊
@@ -846,10 +933,19 @@ MIUI 有額外的安全限制。請：
 
 恭喜你！如果你照著這份教學做完了，你應該已經：
 
+**Android 使用者：**
 - ✅ 安裝好 Node.js
 - ✅ 安裝好 ADB
-- ✅ 設定好 Android 手機的開發者選項
-- ✅ 安裝好 Appium Settings
+- ✅ 設定好 Android 手機的開發者選項與 USB 偵錯
+- ✅ 安裝好 Appium Settings 並授予位置權限
+- ✅ 成功啟動 Fake GPS 控制台
+- ✅ 學會使用基本功能
+
+**iOS 使用者：**
+- ✅ 安裝好 Node.js
+- ✅ 安裝好 Xcode 與 pymobiledevice3
+- ✅ 開啟 iPhone 開發者模式
+- ✅ 知道每次使用前要先執行 `sudo pymobiledevice3 remote tunneld`
 - ✅ 成功啟動 Fake GPS 控制台
 - ✅ 學會使用基本功能
 
