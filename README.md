@@ -1,4 +1,4 @@
-# 🗺️ Android Fake GPS 控制台
+# 🗺️ Android/iOS Fake GPS 控制台
 
 ![Node.js](https://img.shields.io/badge/Node.js-14%2B-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
