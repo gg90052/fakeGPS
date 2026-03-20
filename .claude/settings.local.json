@@ -40,7 +40,31 @@
       "Bash(git config user.name)",
       "Bash(git config user.email)",
       "Bash(git checkout --orphan temp-squash)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(git branch -D main)",
+      "Bash(git branch -m main)",
+      "Bash(git branch -D master)",
+      "Bash(git branch -m master)",
+      "Bash(git push --force origin master)",
+      "Bash(git checkout -b feature/ios-support)",
+      "Bash(echo \"exit_code:$?\")",
+      "Bash(pymobiledevice3 developer dvt simulate-location set -- 25.0330 121.5654)",
+      "Bash(timeout 20 pymobiledevice3 developer dvt simulate-location set --tunnel 00008140-001211E93082201C -- 25.0330 121.5654)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(pymobiledevice3 usbmux list)",
+      "Bash(pymobiledevice3 remote list-tunnels)",
+      "Bash(pymobiledevice3 developer dvt -h)",
+      "Bash(pymobiledevice3 developer dvt simulate-location -h)",
+      "Bash(pymobiledevice3 developer dvt simulate-location set -h)",
+      "Bash(pip3 index versions pymobiledevice3)",
+      "Bash(pip3 install --upgrade pymobiledevice3==8.2.1)",
+      "Bash(pymobiledevice3 developer -h)",
+      "Bash(python3 -c \"import pymobiledevice3; import os; print\\(os.path.dirname\\(pymobiledevice3.__file__\\)\\)\")",
+      "Bash(python3 -c \"from pymobiledevice3.cli.cli_common import OSUTILS; import inspect; print\\(inspect.getsource\\(OSUTILS.wait_return\\)\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(git add server.js ios_location_daemon.py)",
+      "Bash(ls:*)",
+      "Bash(git add:*)"
     ]
   }
 }
