@@ -232,13 +232,13 @@ iOS 的保護機制比 Android 嚴格，假 GPS 需要透過蘋果官方開發�
 **macOS：** 打開 Terminal（終端機），執行：
 
 ```bash
-pip3 install pymobiledevice3
+pip3 install "pymobiledevice3>=9.6"
 ```
 
 **Windows：** 打開命令提示字元或 PowerShell，執行：
 
 ```powershell
-pip install pymobiledevice3
+pip install "pymobiledevice3>=9.6"
 ```
 
 > 若出現 `pip: command not found`，請先至 [https://www.python.org](https://www.python.org) 下載安裝 Python 3，安裝時勾選「**Add Python to PATH**」。
@@ -247,43 +247,12 @@ pip install pymobiledevice3
 
 ```bash
 pymobiledevice3 --version
-# 看到版本號碼（例如 3.x.x）代表成功
+# 看到版本號碼（例如 9.x.x）代表成功
 ```
 
 ---
 
-### 步驟三：啟動 Tunnel（每次重開電腦需執行）
-
-pymobiledevice3 在 iOS 17+ 需要先建立一個特殊的連線通道（tunnel），這個步驟需要管理員權限。
-
-#### macOS
-
-```bash
-sudo pymobiledevice3 remote tunneld
-```
-
-輸入 Mac 登入密碼後，Terminal 會持續顯示 log 訊息，**這個視窗要一直開著**，不能關掉。
-
-#### Windows（額外前置步驟）
-
-Windows 需要先安裝 **WinTun 驅動程式**，否則 tunnel 無法建立虛擬網路介面：
-
-1. 前往 [https://www.wireguard.com/install/](https://www.wireguard.com/install/) 下載並安裝 **WireGuard for Windows**（WinTun 驅動程式包含在內）
-2. 安裝完成後，以**系統管理員**身份開啟 PowerShell：
-   - 在開始選單搜尋「PowerShell」→ 右鍵 →「以系統管理員身份執行」
-3. 執行：
-   ```powershell
-   pymobiledevice3 remote tunneld
-   ```
-   （Windows 不需要 `sudo`，改為以系統管理員身份執行）
-
-PowerShell 視窗會持續顯示 log 訊息，**保持視窗開著**，不能關掉。
-
-> ⚠️ **Windows 已知限制**：部分 Windows 版本或防毒軟體可能阻擋 WinTun 建立網路介面。若 tunneld 一直無法啟動，建議改用 Mac。
-
----
-
-### 步驟四：連接 iPhone 並信任電腦
+### 步驟三：連接 iPhone 並信任電腦
 
 1. 用 USB 連接 iPhone 到電腦
 2. iPhone 螢幕會跳出「是否信任此電腦？」，點「信任」
@@ -291,15 +260,41 @@ PowerShell 視窗會持續顯示 log 訊息，**保持視窗開著**，不能關
 
 ---
 
-### 步驟五：驗證偵測到裝置
+### 步驟四：啟動伺服器（選擇 iOS 模式）
 
-另開一個新的終端機／PowerShell 視窗（tunnel 那個不要關），執行：
+在終端機執行：
 
 ```bash
-pymobiledevice3 usbmux list
+npm start
 ```
 
-如果看到包含你 iPhone 名稱的 JSON 輸出，就代表偵測成功，可以繼續下一步啟動伺服器了。
+啟動後會出現選單：
+
+```
+=== FakeGPS 啟動器 ===
+
+  1) Android 裝置
+  2) iOS 裝置
+
+請選擇要連結的裝置類型 (1/2):
+```
+
+輸入 **2** 後按 Enter。啟動器會自動以 sudo 啟動 tunnel（macOS 需輸入登入密碼），tunnel 就緒後伺服器會自動開啟，不需要另開視窗。
+
+> ⚠️ **Windows 使用者**：需先安裝 **WireGuard for Windows**（含 WinTun 驅動，至 [wireguard.com/install](https://www.wireguard.com/install/) 下載），並以**系統管理員身份**開啟 PowerShell 再執行 `npm start`。
+
+---
+
+### 步驟五：確認伺服器已就緒
+
+看到以下訊息即代表成功：
+
+```
+通道已啟動，正在啟動伺服器...
+伺服器已啟動於 http://localhost:3000
+```
+
+開啟瀏覽器前往 [http://localhost:3000](http://localhost:3000) 即可開始使用。
 
 ---
 
@@ -473,11 +468,8 @@ npm install
 
 > **📱 iOS 使用者必看（Android 可跳過）**
 >
-> 在執行 `npm start` 之前，請先確認：
-> 1. 另一個終端機視窗已執行 `sudo pymobiledevice3 remote tunneld`（詳見第 5 章步驟三）
-> 2. iPhone 已透過 USB 連接且已信任電腦
->
-> 若 tunneld 沒有先跑起來，伺服器偵測不到 iPhone。
+> 執行 `npm start` 後選擇 **2（iOS）**，啟動器會自動幫你建立 tunnel，不需要另開終端機。
+> 請先確認 iPhone 已透過 USB 連接且已信任電腦（詳見第 5 章步驟三）。
 
 ```
 npm start
@@ -861,7 +853,7 @@ npm install --registry https://registry.npmmirror.com
 
 請依序確認：
 
-1. **tunneld 有沒有在執行？** 開一個終端機執行 `sudo pymobiledevice3 remote tunneld`，確認有 log 訊息持續輸出
+1. **tunneld 有沒有在執行？** 選 iOS 模式啟動時，確認終端機有顯示 `[tunneld]` log 訊息
 2. **iPhone 有沒有跳出「信任此電腦」？** 回到 iPhone 螢幕確認，若沒有跳出，拔掉 USB 重新插
 3. **開發者模式是否已開啟？** 設定 → 隱私權與安全性 → 開發者模式（需要開啟並重啟手機一次）
 4. **pymobiledevice3 是否安裝正確？** 執行 `pymobiledevice3 usbmux list` 看有無輸出
@@ -873,7 +865,7 @@ npm install --registry https://registry.npmmirror.com
 請確認：
 
 1. **iOS 版本是否為 17 以上？** 低於 iOS 17 不支援
-2. **tunneld 是否持續執行中？** 若已關閉，重新執行後在瀏覽器點「重新整理」
+2. **tunneld 是否持續執行中？** 若已停止，重新執行 `npm start` 並選 iOS 模式
 3. **某些 App 可能有自己的防偵測機制**，這超出本工具的範圍
 
 ---
@@ -884,7 +876,7 @@ npm install --registry https://registry.npmmirror.com
 
 | 錯誤訊息 | 解決方式 |
 |----------|----------|
-| `command not found: pymobiledevice3` | 重新執行 `pip3 install pymobiledevice3` |
+| `command not found: pymobiledevice3` | 重新執行 `pip3 install "pymobiledevice3>=9.6"` |
 | `xcode-select: error...` | 執行 `xcode-select --install` 安裝 Xcode Command Line Tools |
 | `Permission denied` | 確認前面加了 `sudo`，並輸入 Mac 登入密碼 |
 | iPhone 無法偵測 | 拔除 USB，重啟 tunneld，再重新插上 USB |

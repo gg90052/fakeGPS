@@ -47,7 +47,7 @@ On your phone: **Developer Options → Select mock location app → Appium Setti
 |------|------------|
 | 1. 手機開啟開發者模式 | `設定 → 隱私權與安全性 → 開發者模式` → 開啟後重啟手機 |
 | 2. 安裝 Xcode 15+ | 從 Mac App Store 安裝（約 7–14 GB） |
-| 3. 安裝 pymobiledevice3 | `pip3 install pymobiledevice3` |
+| 3. 安裝 pymobiledevice3（需 9.6+） | `pip3 install "pymobiledevice3>=9.6"` |
 
 **Windows（額外需求）：**
 
@@ -55,33 +55,27 @@ On your phone: **Developer Options → Select mock location app → Appium Setti
 |------|------------|
 | 1. 手機開啟開發者模式 | `設定 → 隱私權與安全性 → 開發者模式` → 開啟後重啟手機 |
 | 2. 安裝 Python 3 | 至 python.org 下載，安裝時勾選「Add Python to PATH」|
-| 3. 安裝 pymobiledevice3 | `pip install pymobiledevice3` |
+| 3. 安裝 pymobiledevice3（需 9.6+） | `pip install "pymobiledevice3>=9.6"` |
 | 4. 安裝 WireGuard（含 WinTun 驅動） | 至 wireguard.com/install 下載安裝 |
 
 ### 每次使用前的啟動順序
 
-**⚠️ 順序很重要，tunneld 必須在 `npm start` 之前執行！**
-
 **macOS：**
 ```bash
-# 步驟 A：開一個終端機，執行 tunnel（保持視窗開著）
-sudo pymobiledevice3 remote tunneld
+# 步驟 A：插上 iPhone USB，手機點「信任」
 
-# 步驟 B：插上 iPhone USB，手機點「信任」
-
-# 步驟 C：另開新終端機，啟動伺服器
+# 步驟 B：啟動伺服器，選擇 iOS 模式
 npm start
+# → 出現選單後輸入 2，啟動器會自動以 sudo 執行 tunneld
 ```
 
 **Windows（以系統管理員身份執行 PowerShell）：**
 ```powershell
-# 步驟 A：以系統管理員開啟 PowerShell，執行 tunnel（保持視窗開著）
-pymobiledevice3 remote tunneld
+# 步驟 A：插上 iPhone USB，手機點「信任」
 
-# 步驟 B：插上 iPhone USB，手機點「信任」
-
-# 步驟 C：另開新 PowerShell，啟動伺服器
+# 步驟 B：啟動伺服器，選擇 iOS 模式
 npm start
+# → 出現選單後輸入 2，啟動器會自動執行 tunneld
 ```
 
 確認裝置偵測成功（可選）：
@@ -95,7 +89,7 @@ pymobiledevice3 usbmux list
 | 問題 | 解決方式 |
 |------|----------|
 | 裝置未偵測到 | 確認 tunneld 已執行；拔插 USB；手機點「信任」 |
-| `pymobiledevice3: command not found` | 重新執行 `pip3 install pymobiledevice3` |
+| `pymobiledevice3: command not found` | 重新執行 `pip3 install "pymobiledevice3>=9.6"` |
 | `xcode-select: error`（macOS） | 執行 `xcode-select --install` |
 | tunneld 無法啟動（Windows） | 確認已安裝 WireGuard；確認以系統管理員身份執行 PowerShell |
 | GPS 不生效 | 確認 iPhone iOS 17+；確認 tunneld 仍在執行 |
@@ -112,7 +106,7 @@ pymobiledevice3 usbmux list
 |------|----------------|
 | 1. Enable Developer Mode | `Settings → Privacy & Security → Developer Mode` → reboot |
 | 2. Install Xcode 15+ | From Mac App Store (~7–14 GB) |
-| 3. Install pymobiledevice3 | `pip3 install pymobiledevice3` |
+| 3. Install pymobiledevice3 (9.6+ required) | `pip3 install "pymobiledevice3>=9.6"` |
 
 **Windows (extra requirements):**
 
@@ -120,33 +114,27 @@ pymobiledevice3 usbmux list
 |------|----------------|
 | 1. Enable Developer Mode | `Settings → Privacy & Security → Developer Mode` → reboot |
 | 2. Install Python 3 | Download from python.org; check "Add Python to PATH" |
-| 3. Install pymobiledevice3 | `pip install pymobiledevice3` |
+| 3. Install pymobiledevice3 (9.6+ required) | `pip install "pymobiledevice3>=9.6"` |
 | 4. Install WireGuard (includes WinTun driver) | Download from wireguard.com/install |
 
 ### Startup order (required every session)
 
-**⚠️ Order matters — tunneld must run before `npm start`!**
-
 **macOS:**
 ```bash
-# Step A: Open a terminal, start the tunnel (keep this window open)
-sudo pymobiledevice3 remote tunneld
+# Step A: Plug in iPhone via USB, tap "Trust" on device
 
-# Step B: Plug in iPhone via USB, tap "Trust" on device
-
-# Step C: Open a new terminal, start the server
+# Step B: Start the server and select iOS mode
 npm start
+# → When the menu appears, enter 2 — the launcher auto-starts tunneld with sudo
 ```
 
 **Windows (run PowerShell as Administrator):**
 ```powershell
-# Step A: Open PowerShell as Administrator, start tunnel (keep this window open)
-pymobiledevice3 remote tunneld
+# Step A: Plug in iPhone via USB, tap "Trust" on device
 
-# Step B: Plug in iPhone via USB, tap "Trust" on device
-
-# Step C: Open a new PowerShell, start the server
+# Step B: Start the server and select iOS mode
 npm start
+# → When the menu appears, enter 2 — the launcher auto-starts tunneld
 ```
 
 Verify device detection (optional):
@@ -160,7 +148,7 @@ pymobiledevice3 usbmux list
 | Problem | Fix |
 |---------|-----|
 | Device not detected | Confirm tunneld is running; re-plug USB; tap "Trust" on device |
-| `pymobiledevice3: command not found` | Re-run `pip3 install pymobiledevice3` |
+| `pymobiledevice3: command not found` | Re-run `pip3 install "pymobiledevice3>=9.6"` |
 | `xcode-select: error` (macOS) | Run `xcode-select --install` |
 | tunneld won't start (Windows) | Confirm WireGuard is installed; confirm PowerShell is running as Administrator |
 | GPS has no effect | Confirm iOS 17+; confirm tunneld is still running |

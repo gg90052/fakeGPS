@@ -4,6 +4,7 @@
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-17%2B-000000?logo=apple&logoColor=white)
 
 一個基於 Node.js 的本地網頁工具，透過 ADB 將虛擬 GPS 座標發送到 Android 手機的 Appium Settings。支援 Google Maps（需 API Key）或 OpenStreetMap（免費，無需任何 Key）雙地圖系統、路徑規劃播放、GPS 鎖定與最愛地點管理。
 
@@ -66,30 +67,24 @@
 
 1. 手機開啟開發者模式：`設定 → 隱私權與安全性 → 開發者模式`
 2. 電腦安裝 Xcode 15+（pymobiledevice3 依賴其底層框架）
-3. 電腦安裝 pymobiledevice3：
+3. 電腦安裝 pymobiledevice3（需 9.6 以上）：
    ```bash
-   pip3 install pymobiledevice3
+   pip3 install "pymobiledevice3>=9.6"
    ```
-4. 每次重開電腦後，啟動前需先執行 tunnel（需要 sudo 密碼）：
-   ```bash
-   sudo pymobiledevice3 remote tunneld
-   ```
-5. 手機連接 USB，信任此電腦
+4. 手機連接 USB，信任此電腦
+5. 執行 `npm start`，選擇 **2（iOS）**，啟動器會自動以 sudo 啟動 tunnel 並開啟伺服器
 
 **Windows（進階，穩定性較低）：**
 
 1. 手機開啟開發者模式：`設定 → 隱私權與安全性 → 開發者模式`
 2. 安裝 Python 3（[python.org](https://www.python.org)，安裝時勾選「Add Python to PATH」）
-3. 安裝 pymobiledevice3：
+3. 安裝 pymobiledevice3（需 9.6 以上）：
    ```powershell
-   pip install pymobiledevice3
+   pip install "pymobiledevice3>=9.6"
    ```
 4. 安裝 [WireGuard for Windows](https://www.wireguard.com/install/)（包含 tunneld 所需的 WinTun 驅動）
-5. 每次重開電腦後，以**系統管理員**身份開啟 PowerShell，執行 tunnel：
-   ```powershell
-   pymobiledevice3 remote tunneld
-   ```
-6. 手機連接 USB，信任此電腦
+5. 以**系統管理員**身份開啟 PowerShell，手機連接 USB 並信任電腦
+6. 執行 `npm start`，選擇 **2（iOS）**，啟動器會自動啟動 tunnel 並開啟伺服器
 
 ---
 
@@ -335,6 +330,7 @@ Android 手機
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-17%2B-000000?logo=apple&logoColor=white)
 
 A local web-based tool built with Node.js that sends fake GPS coordinates to an Android device via ADB and Appium Settings. Supports both Google Maps (API Key required) and OpenStreetMap (free, no key needed), with route planning, GPS keepalive, and favorites management.
 
@@ -396,30 +392,24 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 
 1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
 2. Install Xcode 15+ on Mac (pymobiledevice3 depends on its underlying frameworks)
-3. Install pymobiledevice3:
+3. Install pymobiledevice3 (9.6 or higher required):
    ```bash
-   pip3 install pymobiledevice3
+   pip3 install "pymobiledevice3>=9.6"
    ```
-4. After each computer reboot, start the tunnel before launching (requires sudo password):
-   ```bash
-   sudo pymobiledevice3 remote tunneld
-   ```
-5. Connect the device via USB and trust the computer
+4. Connect the device via USB and trust the computer
+5. Run `npm start`, select **2 (iOS)** — the launcher automatically starts the tunnel with sudo and opens the server
 
 **Windows (advanced, less stable):**
 
 1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
 2. Install Python 3 from [python.org](https://www.python.org) — check "Add Python to PATH" during setup
-3. Install pymobiledevice3:
+3. Install pymobiledevice3 (9.6 or higher required):
    ```powershell
-   pip install pymobiledevice3
+   pip install "pymobiledevice3>=9.6"
    ```
 4. Install [WireGuard for Windows](https://www.wireguard.com/install/) (includes the WinTun driver required by tunneld)
-5. After each reboot, open PowerShell **as Administrator** and start the tunnel:
-   ```powershell
-   pymobiledevice3 remote tunneld
-   ```
-6. Connect the device via USB and trust the computer
+5. Open PowerShell **as Administrator**, connect device via USB and trust the computer
+6. Run `npm start`, select **2 (iOS)** — the launcher automatically starts the tunnel and opens the server
 
 ---
 
