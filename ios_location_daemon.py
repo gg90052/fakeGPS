@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
 
 async def main() -> None:
     from pymobiledevice3.tunneld.api import get_tunneld_devices
-    from pymobiledevice3.services.dvt.dvt_secure_socket_proxy import DvtSecureSocketProxyService
+    from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
     from pymobiledevice3.services.dvt.instruments.location_simulation import LocationSimulation
 
     # 透過 tunneld 取得裝置
@@ -38,8 +38,8 @@ async def main() -> None:
     device = devices[0]
 
     try:
-        async with DvtSecureSocketProxyService(device) as dvt:
-            location_sim = LocationSimulation(dvt)
+        dvt = DvtProvider(device)
+        async with LocationSimulation(dvt) as location_sim:
 
             # 通知 server.js 已就緒
             print("READY", flush=True)

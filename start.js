@@ -99,7 +99,7 @@ async function main() {
       console.log('\n通道已啟動，正在啟動伺服器...\n');
     } catch (err) {
       console.error(`\n錯誤：${err.message}`);
-      console.error('請確認已安裝 pymobiledevice3：pip3 install pymobiledevice3');
+      console.error('請確認已安裝 pymobiledevice3：pip3 install "pymobiledevice3>=9.6"');
       process.exit(1);
     }
   } else if (choice.trim() !== '1') {
