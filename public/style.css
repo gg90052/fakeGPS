@@ -74,6 +74,13 @@ button:hover:not(:disabled) { background: #b4d0fb; }
   border-radius: 4px;
 }
 
+#device-connection-info {
+  font-size: 11px;
+  color: #6c7086;
+  padding: 2px 8px 0;
+  min-height: 16px;
+}
+
 /* D-Pad — 3x3 Grid 八方向 */
 #dpad {
   display: grid;

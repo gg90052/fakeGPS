@@ -628,8 +628,11 @@ function setupControls() {
     showStatus('📍 已回到目前定位');
   });
 
-  // 裝置狀態刷新
-  document.getElementById('btn-refresh-device').addEventListener('click', refreshDevice);
+  // 裝置狀態刷新（手動按鈕：重置重試計數）
+  document.getElementById('btn-refresh-device').addEventListener('click', () => {
+    deviceRetryCount = 0;
+    refreshDevice();
+  });
   refreshDevice();
 
   // Keepalive 手動切換
@@ -753,21 +756,78 @@ function setupControls() {
 }
 
 // =============================================
-// 刷新 ADB 裝置狀態
+// 刷新 ADB 裝置狀態（含自動重試）
 // =============================================
+let deviceRetryTimer = null;
+let deviceRetryCount = 0;
+const DEVICE_MAX_RETRIES = 20;   // 20 次 × 3 秒 = 最多等 60 秒
+const DEVICE_RETRY_MS   = 3000;
+
+const CONNECTION_LABELS = { wifi: '📶 WiFi', usb: '🔌 USB' };
+const PLATFORM_LABELS   = { ios: ' (iOS)', android: ' (Android)' };
+
 async function refreshDevice() {
+  if (deviceRetryTimer) { clearTimeout(deviceRetryTimer); deviceRetryTimer = null; }
+
+  const statusEl = document.getElementById('device-status');
+  const infoEl   = document.getElementById('device-connection-info');
+
+  statusEl.textContent = '偵測中…';
+  infoEl.textContent   = '';
+
   try {
-    const res = await fetch('/api/device');
-    const data = await res.json();
-    if (data.device) {
-      const PLATFORM_LABELS = { ios: ' (iOS)', android: ' (Android)' };
-      const platformLabel = PLATFORM_LABELS[data.platform] ?? '';
-      document.getElementById('device-status').textContent = data.device + platformLabel;
+    const [deviceRes, statusRes] = await Promise.all([
+      fetch('/api/device'),
+      fetch('/api/status'),
+    ]);
+    const deviceData = await deviceRes.json();
+    const statusData = await statusRes.json();
+
+    if (deviceData.device) {
+      // 裝置已找到
+      deviceRetryCount = 0;
+      const platformLabel   = PLATFORM_LABELS[deviceData.platform] ?? '';
+      const connectionLabel = CONNECTION_LABELS[deviceData.connection] ?? '';
+      statusEl.textContent = deviceData.device + platformLabel;
+
+      // 顯示連線方式，再顯示 iOS daemon 狀態
+      let info = connectionLabel;
+      if (deviceData.platform === 'ios') {
+        const daemonLabel = { ready: '✓ DVT 已就緒', connecting: '⏳ DVT 連線中…', idle: '' };
+        const daemon = daemonLabel[statusData.iosState] ?? '';
+        if (daemon) info += (info ? '　' : '') + daemon;
+        // 若 daemon 還在連線中，繼續輪詢直到就緒
+        if (statusData.iosState === 'connecting') {
+          deviceRetryTimer = setTimeout(refreshDevice, DEVICE_RETRY_MS);
+        }
+      }
+      infoEl.textContent = info;
+
     } else {
-      document.getElementById('device-status').textContent = '未偵測';
+      // 裝置未找到，決定是否自動重試
+      if (deviceRetryCount < DEVICE_MAX_RETRIES) {
+        const remaining = DEVICE_MAX_RETRIES - deviceRetryCount;
+        statusEl.textContent = '等待裝置連線…';
+
+        let hint = '';
+        if (statusData.driver === null) {
+          // tunneld 尚未找到裝置
+          hint = `tunneld 掃描中（剩餘 ${remaining * DEVICE_RETRY_MS / 1000} 秒）`;
+        }
+        infoEl.textContent = hint;
+
+        deviceRetryCount++;
+        deviceRetryTimer = setTimeout(refreshDevice, DEVICE_RETRY_MS);
+      } else {
+        deviceRetryCount = 0;
+        statusEl.textContent = '未偵測';
+        infoEl.textContent = '逾時，請確認裝置後手動重試';
+      }
     }
   } catch {
-    document.getElementById('device-status').textContent = '無法連線到後端';
+    statusEl.textContent = '無法連線到後端';
+    infoEl.textContent = '';
+    deviceRetryCount = 0;
   }
 }
 
