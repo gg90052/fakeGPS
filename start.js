@@ -3,6 +3,9 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 const path = require('path');
 
+// venv 執行檔路徑（Python 3.13 + pymobiledevice3）
+const VENV_PMD3 = path.join(__dirname, '.venv', 'bin', 'pymobiledevice3');
+
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
 function ask(question) {
@@ -40,7 +43,7 @@ async function startIosTunnel() {
   console.log('\n正在啟動 pymobiledevice3 通道（需要 sudo 權限）...');
   console.log('如果提示輸入密碼，請輸入您的 Mac 登入密碼。\n');
 
-  const tunneld = spawnTracked('sudo', ['pymobiledevice3', 'remote', 'tunneld'], {
+  const tunneld = spawnTracked('sudo', [VENV_PMD3, 'remote', 'tunneld'], {
     stdio: ['inherit', 'pipe', 'pipe'],
   });
 
@@ -87,7 +90,12 @@ async function startIosTunnel() {
 async function main() {
   console.log('=== FakeGPS 啟動器 ===\n');
   console.log('  1) Android 裝置');
-  console.log('  2) iOS 裝置');
+  console.log('  2) iOS 裝置（USB / WiFi）');
+  console.log('');
+  console.log('     ⚠️  iOS WiFi 連線前請確認：');
+  console.log('        · iPhone 已先用 USB 與 Mac 配對過');
+  console.log('        · iPhone 與 Mac 在同一個 WiFi 網路');
+  console.log('        · 設定 → 一般 → VPN 與裝置管理 → 開發者模式 已開啟');
   console.log('');
 
   const choice = await ask('請選擇要連結的裝置類型 (1/2): ');

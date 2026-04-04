@@ -2,6 +2,10 @@ const express = require('express');
 const { exec, spawn } = require('child_process');
 const path = require('path');
 
+// venv 執行檔路徑（Python 3.13 + pymobiledevice3）
+const VENV_PYTHON = path.join(__dirname, '.venv', 'bin', 'python3');
+const VENV_PMD3   = path.join(__dirname, '.venv', 'bin', 'pymobiledevice3');
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -41,7 +45,7 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 function startIosDaemon() {
   stopIosDaemon();
   const daemonPath = path.join(__dirname, 'ios_location_daemon.py');
-  iosProcess = spawn('python3', [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+  iosProcess = spawn(VENV_PYTHON, [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
   iosDaemonReady = false;
 
   iosProcess.stdout.on('data', (data) => {
@@ -130,32 +134,49 @@ app.get('/api/device', (req, res) => {
       }
     }
 
-    // Android 未找到，嘗試偵測 iOS
-    exec('pymobiledevice3 usbmux list', (iosError, iosStdout) => {
-      if (iosError || !iosStdout?.trim() || iosStdout.trim() === '[]') {
-        currentDriver = null;
-        stopKeepalive();
-        stopIosDaemon();
-        return res.json({ device: null, platform: null });
+    // Android 未找到，先嘗試偵測 USB iOS
+    exec(`"${VENV_PMD3}" usbmux list`, (iosError, iosStdout) => {
+      let usbDevices = [];
+      if (!iosError && iosStdout?.trim() && iosStdout.trim() !== '[]') {
+        try { usbDevices = JSON.parse(iosStdout); } catch {}
       }
-      try {
-        const devices = JSON.parse(iosStdout);
-        if (!Array.isArray(devices) || devices.length === 0) {
+
+      if (Array.isArray(usbDevices) && usbDevices.length > 0) {
+        // USB 裝置找到
+        const iosDevice = usbDevices[0].DeviceName || usbDevices[0].UniqueDeviceID || 'iOS Device';
+        currentDriver = 'ios';
+        startIosDaemon();
+        return res.json({ device: iosDevice, platform: 'ios', connection: 'usb' });
+      }
+
+      // USB 未找到，嘗試透過 tunneld 偵測 WiFi 裝置
+      const listPath = path.join(__dirname, 'ios_list_devices.py');
+      exec(`"${VENV_PYTHON}" "${listPath}"`, (wifiError, wifiStdout) => {
+        if (wifiError || !wifiStdout?.trim() || wifiStdout.trim() === '[]') {
           currentDriver = null;
           stopKeepalive();
           stopIosDaemon();
           return res.json({ device: null, platform: null });
         }
-        const iosDevice = devices[0].DeviceName || devices[0].UniqueDeviceID || 'iOS Device';
-        currentDriver = 'ios';
-        startIosDaemon();
-        res.json({ device: iosDevice, platform: 'ios' });
-      } catch {
-        currentDriver = null;
-        stopKeepalive();
-        stopIosDaemon();
-        res.json({ device: null, platform: null });
-      }
+        try {
+          const wifiDevices = JSON.parse(wifiStdout);
+          if (!Array.isArray(wifiDevices) || wifiDevices.length === 0) {
+            currentDriver = null;
+            stopKeepalive();
+            stopIosDaemon();
+            return res.json({ device: null, platform: null });
+          }
+          const iosDevice = wifiDevices[0].DeviceName || wifiDevices[0].UniqueDeviceID || 'iOS Device';
+          currentDriver = 'ios';
+          startIosDaemon();
+          res.json({ device: iosDevice, platform: 'ios', connection: 'wifi' });
+        } catch {
+          currentDriver = null;
+          stopKeepalive();
+          stopIosDaemon();
+          res.json({ device: null, platform: null });
+        }
+      });
     });
   });
 });
@@ -297,6 +318,19 @@ app.post('/api/route/stop', (req, res) => {
 // 查詢路徑播放狀態
 app.get('/api/route/status', (req, res) => {
   res.json({ playing: routeTimer !== null, currentPos: routeCurrentPos });
+});
+
+// 查詢伺服器與 iOS daemon 狀態
+app.get('/api/status', (req, res) => {
+  let iosState = 'idle';
+  if (currentDriver === 'ios') {
+    if (iosDaemonReady) iosState = 'ready';
+    else if (iosProcess) iosState = 'connecting';
+  }
+  res.json({
+    driver: currentDriver,
+    iosState,   // 'idle' | 'connecting' | 'ready'
+  });
 });
 
 // 查詢 keepalive 狀態
