@@ -46,7 +46,8 @@
 - ⭐ **最愛地點 & 路徑** — 儲存常用地點與路徑，一鍵快速載入
 - 📜 **位置歷史** — 自動記錄最近 10 筆確認位置，點擊可載入為預覽
 - 💾 **狀態持久化** — 所有設定自動儲存至 localStorage，重新整理頁面後完整恢復
-- 📡 **ADB 裝置自動偵測** — 自動偵測 Android SDK 版本，選用正確的 ADB 指令
+- 📶 **iOS WiFi 連線** — 首次透過 USB 配對後，後續可直接以 WiFi 連線，無需插線
+- 📡 **裝置自動偵測** — 自動偵測 Android / iOS 裝置；裝置連線中時，前端每 3 秒自動重試（最多 60 秒）並顯示連線方式（USB / WiFi）與 DVT 狀態
 
 ---
 
@@ -63,16 +64,28 @@
 
 > iOS 支援需額外安裝工具，Android 使用者可跳過此段。
 
+| 項目              | 需求                                    |
+| ----------------- | --------------------------------------- |
+| macOS             | 推薦（Windows 穩定性較低）              |
+| Xcode             | 15+                                     |
+| Python 3.13       | iOS 18.2+ TCP 模式必須                  |
+| pymobiledevice3   | 9.6 以上（建議透過 .venv 安裝）         |
+
 **macOS（推薦）：**
 
 1. 手機開啟開發者模式：`設定 → 隱私權與安全性 → 開發者模式`
 2. 電腦安裝 Xcode 15+（pymobiledevice3 依賴其底層框架）
-3. 電腦安裝 pymobiledevice3（需 9.6 以上）：
+3. 安裝 Python 3.13（iOS 18.2+ 必須）：
    ```bash
-   pip3 install "pymobiledevice3>=9.6"
+   brew install python@3.13
    ```
-4. 手機連接 USB，信任此電腦
-5. 執行 `npm start`，選擇 **2（iOS）**，啟動器會自動以 sudo 啟動 tunnel 並開啟伺服器
+4. 在專案目錄建立 venv 並安裝 pymobiledevice3：
+   ```bash
+   python3.13 -m venv .venv
+   .venv/bin/pip install "pymobiledevice3>=9.6"
+   ```
+5. 手機透過 USB 連接，在 iPhone 點「信任」
+6. 執行 `npm start`，選擇 **2（iOS）**；支援 USB 及 WiFi 連線（WiFi 需先透過 USB 完成配對）
 
 **Windows（進階，穩定性較低）：**
 
@@ -255,11 +268,14 @@ adb install appium-settings.apk
 Express 伺服器（Node.js）
     │  child_process.exec
     │  GPS Keepalive（每 2 秒重送最後座標）
-    ▼
-ADB (Android Debug Bridge)
-    │  am startservice / am start-foreground-service（依 Android 版本自動選擇）
-    ▼
-Android 手機
+    ├─────────────────────────────────────────────┐
+    ▼                                             ▼
+ADB (Android Debug Bridge)           pymobiledevice3 tunneld
+    │  am startservice /                  │  iOS DVT LocationSimulation
+    │  am start-foreground-service        │  USB 或 WiFi 連線
+    │  （依 Android 版本自動選擇）         ▼
+    ▼                               iOS 裝置
+Android 手機                            └─ ios_location_daemon.py（DVT）
     └─ Appium Settings LocationService
 ```
 
@@ -304,6 +320,15 @@ Android 手機
 **座標送出後一段時間 GPS 又漂回真實位置**
 → 確認側邊欄顯示「🔒 GPS 鎖定中」。若顯示「⏸ 未鎖定」，點「恢復鎖定」重新啟動 keepalive。
 
+**iOS 裝置顯示「等待裝置連線…」超過 60 秒**
+→ 確認 iPhone 與 Mac 在同一個 WiFi 網路，或改用 USB 連線；tunneld 啟動後約需 15–30 秒掃描到裝置，前端會自動重試。
+
+**iOS 18.2+ QUIC 錯誤 / QuicProtocolNotSupportedError**
+→ 需要 Python 3.13 並使用本專案的 .venv。執行 `brew install python@3.13`，再於專案目錄執行：
+```bash
+python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
+```
+
 ---
 
 ## 🛠️ 技術棧
@@ -312,6 +337,7 @@ Android 手機
 - **前端**：Vanilla JavaScript、Google Maps JavaScript API / Leaflet.js + OpenStreetMap
 - **通訊**：ADB (Android Debug Bridge)
 - **Android**：Appium Settings LocationService
+- **iOS 驅動**：pymobiledevice3、DVT LocationSimulation
 - **UI 主題**：[Catppuccin Mocha](https://github.com/catppuccin/catppuccin)
 
 ---
@@ -371,7 +397,8 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 - ⭐ **Favorite Locations & Routes** — Save frequently used locations and routes for one-click loading
 - 📜 **Location History** — Automatically records the last 10 confirmed positions; click to load as preview
 - 💾 **State Persistence** — All settings automatically saved to localStorage and restored on page reload
-- 📡 **Auto ADB Detection** — Automatically detects Android SDK version and selects the correct ADB command
+- 📶 **iOS WiFi Connection** — After the initial USB pairing, subsequent connections can be made over WiFi without a cable
+- 📡 **Auto Device Detection** — Automatically detects Android / iOS devices; while connecting, the frontend retries every 3 seconds (up to 60 seconds) and displays the connection type (USB / WiFi) and DVT status
 
 ---
 
@@ -388,16 +415,28 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 
 > iOS support requires additional tools. Android users can skip this section.
 
+| Item              | Requirement                                        |
+| ----------------- | -------------------------------------------------- |
+| macOS             | Recommended (Windows is less stable)               |
+| Xcode             | 15+                                                |
+| Python 3.13       | Required for iOS 18.2+ TCP mode                    |
+| pymobiledevice3   | 9.6 or higher (recommended to install via .venv)   |
+
 **macOS (recommended):**
 
 1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
 2. Install Xcode 15+ on Mac (pymobiledevice3 depends on its underlying frameworks)
-3. Install pymobiledevice3 (9.6 or higher required):
+3. Install Python 3.13 (required for iOS 18.2+):
    ```bash
-   pip3 install "pymobiledevice3>=9.6"
+   brew install python@3.13
    ```
-4. Connect the device via USB and trust the computer
-5. Run `npm start`, select **2 (iOS)** — the launcher automatically starts the tunnel with sudo and opens the server
+4. Create a venv in the project directory and install pymobiledevice3:
+   ```bash
+   python3.13 -m venv .venv
+   .venv/bin/pip install "pymobiledevice3>=9.6"
+   ```
+5. Connect the device via USB and tap "Trust" on the iPhone
+6. Run `npm start`, select **2 (iOS)**; supports both USB and WiFi connections (WiFi requires initial USB pairing)
 
 **Windows (advanced, less stable):**
 
@@ -580,11 +619,14 @@ Browser (Frontend)
 Express Server (Node.js)
     │  child_process.exec
     │  GPS Keepalive (resends last coordinates every 2s)
-    ▼
-ADB (Android Debug Bridge)
-    │  am startservice / am start-foreground-service (auto-selected by Android version)
-    ▼
-Android Device
+    ├─────────────────────────────────────────────┐
+    ▼                                             ▼
+ADB (Android Debug Bridge)           pymobiledevice3 tunneld
+    │  am startservice /                  │  iOS DVT LocationSimulation
+    │  am start-foreground-service        │  USB or WiFi connection
+    │  (auto-selected by Android ver.)    ▼
+    ▼                               iOS Device
+Android Device                          └─ ios_location_daemon.py (DVT)
     └─ Appium Settings LocationService
 ```
 
@@ -629,6 +671,15 @@ Uses recursive `setTimeout` (not `setInterval`) for variable-interval updates, s
 **GPS drifts back to real location after a while**
 → Check that the sidebar shows **🔒 GPS Locked**. If it shows **⏸ Unlocked**, click **Resume Lock** to restart the keepalive.
 
+**iOS device shows "Waiting for device connection…" for more than 60 seconds**
+→ Confirm the iPhone and Mac are on the same WiFi network, or switch to USB; after tunneld starts it may take 15–30 seconds to detect the device, and the frontend will retry automatically.
+
+**iOS 18.2+ QUIC error / QuicProtocolNotSupportedError**
+→ Python 3.13 and this project's .venv are required. Run `brew install python@3.13`, then in the project directory:
+```bash
+python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
+```
+
 ---
 
 ## 🛠️ Tech Stack
@@ -637,6 +688,7 @@ Uses recursive `setTimeout` (not `setInterval`) for variable-interval updates, s
 - **Frontend**: Vanilla JavaScript, Google Maps JavaScript API / Leaflet.js + OpenStreetMap
 - **Communication**: ADB (Android Debug Bridge)
 - **Android**: Appium Settings LocationService
+- **iOS Driver**: pymobiledevice3, DVT LocationSimulation
 - **UI Theme**: [Catppuccin Mocha](https://github.com/catppuccin/catppuccin)
 
 ---

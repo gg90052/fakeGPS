@@ -232,8 +232,17 @@ iOS 的保護機制比 Android 嚴格，假 GPS 需要透過蘋果官方開發�
 **macOS：** 打開 Terminal（終端機），執行：
 
 ```bash
-pip3 install "pymobiledevice3>=9.6"
+# 先安裝 Python 3.13（iOS 18.2+ 必須）
+brew install python@3.13
+
+# 進入 fakeGPS 專案目錄，建立虛擬環境並安裝
+python3.13 -m venv .venv
+.venv/bin/pip install "pymobiledevice3>=9.6"
 ```
+
+> **為什麼要這樣做？** 因為 macOS 不允許直接安裝 Python 套件（為避免影響系統環境），所以需要建立虛擬環境（.venv）來隔離安裝。這個步驟只需要做一次，之後每次使用都不需要重新建立。
+>
+> **為什麼需要 Python 3.13？** iOS 18.2 以上已移除 QUIC 協定，必須使用 Python 3.13 才能以 TCP 模式連線。
 
 **Windows：** 打開命令提示字元或 PowerShell，執行：
 
@@ -246,7 +255,7 @@ pip install "pymobiledevice3>=9.6"
 安裝完成後，驗證是否成功：
 
 ```bash
-pymobiledevice3 --version
+.venv/bin/pymobiledevice3 --version
 # 看到版本號碼（例如 9.x.x）代表成功
 ```
 
@@ -257,6 +266,9 @@ pymobiledevice3 --version
 1. 用 USB 連接 iPhone 到電腦
 2. iPhone 螢幕會跳出「是否信任此電腦？」，點「信任」
 3. 輸入 iPhone 密碼確認
+
+> 💡 **WiFi 連線（首次配對後可用）**：完成 USB 信任後，之後的使用不一定需要插線。
+> 只要 iPhone 與 Mac 在同一個 WiFi 網路，tunneld 就能自動透過 WiFi 找到裝置。
 
 ---
 
@@ -274,7 +286,12 @@ npm start
 === FakeGPS 啟動器 ===
 
   1) Android 裝置
-  2) iOS 裝置
+  2) iOS 裝置（USB / WiFi）
+
+     ⚠️  iOS WiFi 連線前請確認：
+        · iPhone 已先用 USB 與 Mac 配對過
+        · iPhone 與 Mac 在同一個 WiFi 網路
+        · 設定 → 一般 → VPN 與裝置管理 → 開發者模式 已開啟
 
 請選擇要連結的裝置類型 (1/2):
 ```
@@ -545,8 +562,8 @@ http://localhost:3000
 - 如果顯示「**未偵測到裝置**」→ 請回到[步驟 6](#6-設定-android-手機)確認設定
 
 **iOS 使用者：**
-- 如果顯示你的 iPhone 名稱（例如 `iPhone`）並標示 **[iOS]** → 連線成功！
-- 如果顯示「**未偵測到裝置**」→ 確認 `tunneld` 已在執行，且手機已信任電腦
+- 程式啟動後會自動每 3 秒偵測一次（最多 60 秒），期間會顯示「等待裝置連線…」。連線成功後會顯示 iPhone 名稱（例如：`iPhone 15 Pro (iOS)`），下方還會顯示連線方式（📶 WiFi 或 🔌 USB）及 DVT 連線狀態。
+- 如果超過 60 秒仍顯示「**未偵測到裝置**」→ 確認 `tunneld` 已在執行，且手機已信任電腦
 
 點「**重新整理**」按鈕可以重新偵測裝置。
 
@@ -856,7 +873,7 @@ npm install --registry https://registry.npmmirror.com
 1. **tunneld 有沒有在執行？** 選 iOS 模式啟動時，確認終端機有顯示 `[tunneld]` log 訊息
 2. **iPhone 有沒有跳出「信任此電腦」？** 回到 iPhone 螢幕確認，若沒有跳出，拔掉 USB 重新插
 3. **開發者模式是否已開啟？** 設定 → 隱私權與安全性 → 開發者模式（需要開啟並重啟手機一次）
-4. **pymobiledevice3 是否安裝正確？** 執行 `pymobiledevice3 usbmux list` 看有無輸出
+4. **pymobiledevice3 是否安裝正確？** 執行 `.venv/bin/pymobiledevice3 usbmux list` 看有無輸出
 
 ---
 
@@ -876,10 +893,32 @@ npm install --registry https://registry.npmmirror.com
 
 | 錯誤訊息 | 解決方式 |
 |----------|----------|
-| `command not found: pymobiledevice3` | 重新執行 `pip3 install "pymobiledevice3>=9.6"` |
+| `command not found: pymobiledevice3` | 執行 `python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"` |
 | `xcode-select: error...` | 執行 `xcode-select --install` 安裝 Xcode Command Line Tools |
 | `Permission denied` | 確認前面加了 `sudo`，並輸入 Mac 登入密碼 |
 | iPhone 無法偵測 | 拔除 USB，重啟 tunneld，再重新插上 USB |
+
+---
+
+### ❌ 問題（iOS）：tunneld 出現 `QuicProtocolNotSupportedError`
+
+你的 iPhone 是 iOS 18.2 以上，已移除 QUIC 協定，需要 Python 3.13 才能使用 TCP 模式。請執行：
+
+```bash
+brew install python@3.13
+python3.13 -m venv .venv
+.venv/bin/pip install "pymobiledevice3>=9.6"
+```
+
+---
+
+### ❌ 問題（iOS）：等待超過 60 秒後顯示「逾時，請確認裝置後手動重試」
+
+**解決方法：**
+
+1. 確認 iPhone 與 Mac 在同一個 WiFi 網路
+2. 也可以改用 USB 連線（插線後重新點「重新整理」）
+3. tunneld 初次掃描到 WiFi 裝置可能需要 15–30 秒，這是正常現象
 
 ---
 
@@ -937,7 +976,7 @@ MIUI 有額外的安全限制。請：
 - ✅ 安裝好 Node.js
 - ✅ 安裝好 Xcode 與 pymobiledevice3
 - ✅ 開啟 iPhone 開發者模式
-- ✅ 知道每次使用前要先執行 `sudo pymobiledevice3 remote tunneld`
+- ✅ 執行 `npm start` 選 2 時，tunneld 會自動啟動（sudo），支援 USB 與 WiFi 連線
 - ✅ 成功啟動 Fake GPS 控制台
 - ✅ 學會使用基本功能
 
