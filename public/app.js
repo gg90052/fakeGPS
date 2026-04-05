@@ -596,6 +596,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =============================================
+// GPX 檔案解析與載入
+// =============================================
+const GPX_MAX_POINTS = 300; // 超過此數量時均勻取樣，避免地圖標記過多
+
+function loadGpxFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const xml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+
+      // 依優先序嘗試：trkpt（軌跡）> rtept（路線）> wpt（航點）
+      let nodes = xml.querySelectorAll('trkpt');
+      if (nodes.length === 0) nodes = xml.querySelectorAll('rtept');
+      if (nodes.length === 0) nodes = xml.querySelectorAll('wpt');
+
+      const pts = [];
+      nodes.forEach(pt => {
+        const lat = parseFloat(pt.getAttribute('lat'));
+        const lon = parseFloat(pt.getAttribute('lon'));
+        if (isFinite(lat) && isFinite(lon)) pts.push({ lat, lng: lon });
+      });
+
+      if (pts.length === 0) {
+        showStatus('✗ 找不到有效的 GPX 座標點', true);
+        return;
+      }
+
+      // 均勻取樣，避免點位過多
+      let sampled = pts;
+      if (pts.length > GPX_MAX_POINTS) {
+        const step = pts.length / GPX_MAX_POINTS;
+        sampled = Array.from({ length: GPX_MAX_POINTS }, (_, i) => pts[Math.round(i * step)]);
+        sampled[sampled.length - 1] = pts[pts.length - 1]; // 確保最後一點納入
+      }
+
+      clearWaypoints();
+      sampled.forEach(p => addWaypoint(p.lat, p.lng));
+
+      // 自動將定位設定到第一個航點並送出
+      setLocation(sampled[0].lat, sampled[0].lng, true);
+      pushLocationHistory(sampled[0].lat, sampled[0].lng);
+
+      const note = pts.length > GPX_MAX_POINTS
+        ? `，原始 ${pts.length} 點已取樣至 ${sampled.length} 點`
+        : '';
+      showStatus(`✓ 已載入 ${sampled.length} 個航點${note}，起點已送出`);
+    } catch (err) {
+      showStatus(`✗ GPX 解析失敗：${err.message}`, true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// =============================================
 // 控制面板互動設定
 // =============================================
 function setupControls() {
@@ -686,6 +740,15 @@ function setupControls() {
   document.getElementById('btn-route-stop').addEventListener('click', stopRoute);
   document.getElementById('btn-route-clear').addEventListener('click', clearWaypoints);
   document.getElementById('btn-toggle-waypoint-mode').addEventListener('click', toggleWaypointMode);
+
+  // GPX 載入
+  const gpxInput = document.getElementById('input-gpx');
+  document.getElementById('btn-load-gpx').addEventListener('click', () => gpxInput.click());
+  gpxInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) loadGpxFile(file);
+    gpxInput.value = ''; // 允許重複選同一個檔案
+  });
 
   // 最愛地點
   document.getElementById('btn-fav-add-location').addEventListener('click', () => {

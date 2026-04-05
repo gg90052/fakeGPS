@@ -64,7 +64,11 @@
       <section>
         <label>路徑規劃</label>
         <div id="waypoint-mode-hint">在地圖上點擊新增航點（先開啟模式）</div>
-        <button id="btn-toggle-waypoint-mode">開啟航點模式</button>
+        <div style="display:flex; gap:6px;">
+          <button id="btn-toggle-waypoint-mode" style="flex:1;">開啟航點模式</button>
+          <button id="btn-load-gpx" style="flex:1;">📂 載入 GPX</button>
+        </div>
+        <input type="file" id="input-gpx" accept=".gpx" style="display:none" />
         <ul id="waypoint-list"></ul>
         <label>速度（km/h）</label>
         <input type="range" id="speed-slider" min="1" max="50" value="10" />

@@ -41,6 +41,7 @@
 - ↩ **快速回位** — 圓形按鈕一鍵將地圖視角拉回目前確認的 GPS 位置
 - 🔒 **GPS 鎖定（Keepalive）** — 座標送出後伺服器每 2 秒自動重送，防止手機 GPS 回到真實位置
 - 🛤️ **路徑規劃** — 以目前位置為起點，設定 1 個以上航點即可播放；可調速度（1–50 km/h）
+- 📂 **GPX 載入** — 直接載入 GPX 檔案自動填入航點，超過 300 點自動均勻取樣；載入後自動定位至起點並送出
 - 🎲 **反偵測隨機性** — 播放時自動加入速度波動 ±25%、GPS 抖動 ±2m、間隔波動 ±20%
 - ⭐ **最愛地點 & 路徑** — 儲存常用地點與路徑，一鍵快速載入
 - 📜 **位置歷史** — 自動記錄最近 10 筆確認位置，點擊可載入為預覽
@@ -231,11 +232,11 @@ adb install appium-settings.apk
 
 ### 路徑規劃與播放
 
-1. 點「**開啟航點模式**」
-2. 在地圖上點擊新增航點（**至少 1 個**，路徑自動從目前確認位置出發）
-3. 調整速度滑桿（1–50 km/h）
-4. 點「**▶ 開始播放**」，地圖上會顯示藍色路線與移動的標記
-5. 點「**■ 停止**」隨時中止
+1. 點「**開啟航點模式**」，在地圖上點擊新增航點（**至少 1 個**，路徑自動從目前確認位置出發）
+   - 或點「**📂 載入 GPX**」選取 GPX 檔案，自動填入所有航點並定位至起點
+2. 調整速度滑桿（1–50 km/h）
+3. 點「**▶ 開始播放**」，地圖上會顯示藍色路線與移動的標記
+4. 點「**■ 停止**」隨時中止
 
 > 若第一個航點與目前位置距離超過 **20 km**，播放前會彈出確認視窗。
 
@@ -385,6 +386,7 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 - ↩ **Quick Return** — Circular button to instantly pan the map view back to the current confirmed GPS position
 - 🔒 **GPS Keepalive** — After sending coordinates, the server automatically resends them every 2 seconds to prevent GPS drift back to real location
 - 🛤️ **Route Planning** — Starts from your current position; only 1 waypoint needed; adjustable speed (1–50 km/h)
+- 📂 **GPX Import** — Load a GPX file to auto-populate waypoints; automatically samples to 300 points if needed; first point is sent immediately on load
 - 🎲 **Anti-Detection Randomness** — Speed variance ±25%, GPS jitter ±2m, interval variance ±20% during playback
 - ⭐ **Favorite Locations & Routes** — Save frequently used locations and routes for one-click loading
 - 📜 **Location History** — Automatically records the last 10 confirmed positions; click to load as preview
@@ -575,11 +577,11 @@ After sending coordinates, the server automatically resends them every 2 seconds
 
 ### Route Planning & Playback
 
-1. Click **Enable Waypoint Mode**
-2. Click on the map to add waypoints (**minimum 1** — the route starts from your current confirmed position)
-3. Adjust the speed slider (1–50 km/h)
-4. Click **▶ Start Playback** — a blue route line and moving marker will appear
-5. Click **■ Stop** to cancel at any time
+1. Click **Enable Waypoint Mode** and click on the map to add waypoints (**minimum 1** — the route starts from your current confirmed position)
+   - Or click **📂 Load GPX** to select a GPX file; waypoints are auto-populated and the first point is sent immediately
+2. Adjust the speed slider (1–50 km/h)
+3. Click **▶ Start Playback** — a blue route line and moving marker will appear
+4. Click **■ Stop** to cancel at any time
 
 > If the first waypoint is more than **20 km** from your current position, a confirmation dialog will appear before playback starts.
 

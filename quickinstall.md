@@ -191,6 +191,7 @@ npm start
 | 設定位置 / Set location | 搜尋 / 點地圖 / 輸入座標 → 黃色預覽標記 → **✓ 改變定位** |
 | GPS 鎖定 / GPS Keepalive | 送出後自動啟用，顯示 🔒 / Auto-enabled after any location send — shows 🔒 in sidebar |
 | 路徑播放 / Route playback | 開啟航點模式 → 新增 1+ 航點 → ▶ 開始播放 / Waypoint mode → add 1+ points → ▶ Start |
+| 載入 GPX / Load GPX | 📂 載入 GPX → 選取 .gpx 檔案，自動填入航點並定位起點 / 📂 Load GPX → pick .gpx file, auto-populates waypoints and sends first point |
 | 最愛 / Favorites | ★ 儲存；📍 / ▶ 載入 / ★ to save; 📍 / ▶ to load |
 | 回到紅色標記 / Pan to red marker | ↩ 圓形按鈕 / ↩ circular button |
 
