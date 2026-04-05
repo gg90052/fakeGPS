@@ -17,12 +17,18 @@ let routeCurrentPos = null; // { lat, lng } 播放中的當前座標
 // Android 版本自動偵測：Android 8+（API 26+）需使用 start-foreground-service
 let useForegroundService = false;
 
+// 所有已偵測到的裝置清單
+let detectedDevices = [];  // [{ id, name, platform, connection?, androidSerial?, androidSdk? }]
+let selectedDeviceId = null;
+let currentAndroidSerial = null;
+
 // 裝置驅動類型：'android' | 'ios' | null
 let currentDriver = null;
 
 // iOS DVT 常駐程式（ios_location_daemon.py 子進程）
 let iosProcess = null;
 let iosDaemonReady = false;
+let iosDaemonError = null;  // 最新錯誤訊息（null 表示無錯誤）
 
 // GPS Keepalive 狀態：定時重送最後一個座標，防止手機回到真實位置
 let lastLocation = null;    // { lat, lng }
@@ -44,6 +50,7 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 // 啟動 iOS DVT 常駐程式
 function startIosDaemon() {
   stopIosDaemon();
+  iosDaemonError = null;
   const daemonPath = path.join(__dirname, 'ios_location_daemon.py');
   iosProcess = spawn(VENV_PYTHON, [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
   iosDaemonReady = false;
@@ -53,7 +60,13 @@ function startIosDaemon() {
     if (msg.includes('READY')) iosDaemonReady = true;
   });
   iosProcess.stderr.on('data', (data) => {
-    console.error('[ios-daemon]', data.toString().trim());
+    const msg = data.toString().trim();
+    console.error('[ios-daemon]', msg);
+    // 偵測已知嚴重錯誤，通知前端需重啟伺服器
+    if (msg.includes('Channel is closed') || msg.includes('設定位置失敗')) {
+      iosDaemonError = 'channel_closed';
+      iosDaemonReady = false;
+    }
   });
   iosProcess.on('close', () => {
     iosProcess = null;
@@ -69,6 +82,22 @@ function stopIosDaemon() {
     iosProcess = null;
   }
   iosDaemonReady = false;
+  iosDaemonError = null;
+}
+
+// 啟動指定裝置（設定 currentDriver 與相關狀態）
+function activateDevice(device) {
+  selectedDeviceId = device.id;
+  if (device.platform === 'android') {
+    currentDriver = 'android';
+    currentAndroidSerial = device.androidSerial || null;
+    useForegroundService = device.androidSdk != null && device.androidSdk >= 26;
+    stopIosDaemon();
+  } else if (device.platform === 'ios') {
+    currentDriver = 'ios';
+    currentAndroidSerial = null;
+    if (!iosProcess) startIosDaemon();
+  }
 }
 
 // 執行送座標（根據裝置類型選擇驅動）
@@ -76,7 +105,9 @@ function sendLocation(lat, lng) {
   if (!isFinite(lat) || !isFinite(lng)) return;
   if (currentDriver === 'android') {
     const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-    const cmd = `adb shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
+    // 若有指定序號則加上 -s 參數（多台 Android 裝置支援）
+    const serialFlag = currentAndroidSerial ? `-s "${currentAndroidSerial}" ` : '';
+    const cmd = `adb ${serialFlag}shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
     // 刻意 fire-and-forget：指令失敗時由 keepalive 機制定時重試
     exec(cmd, () => {});
   } else if (currentDriver === 'ios' && iosProcess && iosDaemonReady) {
@@ -114,71 +145,111 @@ function addGpsJitter(lat, lng, maxMeters) {
   return { lat: lat + dLat, lng: lng + dLng };
 }
 
-// 偵測 ADB 連線裝置，並自動偵測 Android 版本決定 service 指令
+// 取得目前已選裝置資訊（精簡版，供相容用）
 app.get('/api/device', (req, res) => {
-  // 先嘗試偵測 Android
-  exec('adb devices', (error, stdout) => {
-    if (!error) {
-      const lines = stdout.split('\n').filter(l => l.trim() && !l.startsWith('List of devices'));
-      const connected = lines.find(l => l.includes('\tdevice'));
-      if (connected) {
-        const device = connected.split('\t')[0].trim();
-        exec('adb shell getprop ro.build.version.sdk', (err, sdkOut) => {
-          const sdk = parseInt((sdkOut || '').trim(), 10);
-          useForegroundService = !isNaN(sdk) && sdk >= 26;
-          currentDriver = 'android';
-          stopIosDaemon();
-          res.json({ device, platform: 'android', androidSdk: isNaN(sdk) ? null : sdk });
-        });
-        return;
-      }
-    }
+  if (!selectedDeviceId) return res.json({ device: null, platform: null });
+  const d = detectedDevices.find(x => x.id === selectedDeviceId);
+  if (!d) return res.json({ device: null, platform: null });
+  res.json({ device: d.name, platform: d.platform, connection: d.connection ?? null });
+});
 
-    // Android 未找到，先嘗試偵測 USB iOS
-    exec(`"${VENV_PMD3}" usbmux list`, (iosError, iosStdout) => {
-      let usbDevices = [];
-      if (!iosError && iosStdout?.trim() && iosStdout.trim() !== '[]') {
-        try { usbDevices = JSON.parse(iosStdout); } catch {}
-      }
+// 偵測所有可用裝置（Android + iOS USB + iOS WiFi）
+app.get('/api/devices', (req, res) => {
+  const result = [];
 
-      if (Array.isArray(usbDevices) && usbDevices.length > 0) {
-        // USB 裝置找到
-        const iosDevice = usbDevices[0].DeviceName || usbDevices[0].UniqueDeviceID || 'iOS Device';
-        currentDriver = 'ios';
-        startIosDaemon();
-        return res.json({ device: iosDevice, platform: 'ios', connection: 'usb' });
-      }
+  exec('adb devices', (adbErr, adbOut) => {
+    const androidLines = adbErr ? [] :
+      adbOut.split('\n')
+        .filter(l => l.trim() && !l.startsWith('List of devices'))
+        .filter(l => l.includes('\tdevice'));
 
-      // USB 未找到，嘗試透過 tunneld 偵測 WiFi 裝置
-      const listPath = path.join(__dirname, 'ios_list_devices.py');
-      exec(`"${VENV_PYTHON}" "${listPath}"`, (wifiError, wifiStdout) => {
-        if (wifiError || !wifiStdout?.trim() || wifiStdout.trim() === '[]') {
-          currentDriver = null;
-          stopKeepalive();
-          stopIosDaemon();
-          return res.json({ device: null, platform: null });
+    let androidPending = androidLines.length;
+
+    function finishAndroid() {
+      // 偵測 iOS USB
+      exec(`"${VENV_PMD3}" usbmux list`, (usbErr, usbOut) => {
+        let usbDevices = [];
+        if (!usbErr && usbOut?.trim() && usbOut.trim() !== '[]') {
+          try { usbDevices = JSON.parse(usbOut); } catch {}
         }
-        try {
-          const wifiDevices = JSON.parse(wifiStdout);
-          if (!Array.isArray(wifiDevices) || wifiDevices.length === 0) {
+        usbDevices.forEach(d => {
+          const udid = d.UniqueDeviceID || d.udid || '';
+          if (!udid || result.find(x => x.id === udid)) return;
+          result.push({ id: udid, name: d.DeviceName || 'iOS Device', platform: 'ios', connection: 'usb' });
+        });
+
+        // 偵測 iOS WiFi（透過 tunneld）
+        const listPath = path.join(__dirname, 'ios_list_devices.py');
+        exec(`"${VENV_PYTHON}" "${listPath}"`, (wifiErr, wifiOut) => {
+          if (!wifiErr && wifiOut?.trim() && wifiOut.trim() !== '[]') {
+            try {
+              const wifiDevices = JSON.parse(wifiOut);
+              wifiDevices.forEach(d => {
+                const udid = d.UniqueDeviceID || '';
+                // 若已以 USB 列出則跳過
+                if (udid && result.find(x => x.id === udid)) return;
+                const wifiId = udid ? `${udid}-wifi` : `ios-wifi-${Date.now()}`;
+                result.push({ id: wifiId, name: d.DeviceName || 'iOS Device', platform: 'ios', connection: 'wifi' });
+              });
+            } catch {}
+          }
+
+          detectedDevices = result;
+
+          // 只有一台裝置且尚未選擇時自動啟動
+          if (result.length === 1 && !selectedDeviceId) {
+            activateDevice(result[0]);
+          }
+          // 若已選裝置已消失，清除狀態
+          if (selectedDeviceId && !result.find(d => d.id === selectedDeviceId)) {
+            selectedDeviceId = null;
             currentDriver = null;
+            currentAndroidSerial = null;
             stopKeepalive();
             stopIosDaemon();
-            return res.json({ device: null, platform: null });
           }
-          const iosDevice = wifiDevices[0].DeviceName || wifiDevices[0].UniqueDeviceID || 'iOS Device';
-          currentDriver = 'ios';
-          startIosDaemon();
-          res.json({ device: iosDevice, platform: 'ios', connection: 'wifi' });
-        } catch {
-          currentDriver = null;
-          stopKeepalive();
-          stopIosDaemon();
-          res.json({ device: null, platform: null });
-        }
+
+          res.json({ devices: result, selectedId: selectedDeviceId });
+        });
+      });
+    }
+
+    if (androidPending === 0) { finishAndroid(); return; }
+
+    androidLines.forEach(line => {
+      const serial = line.split('\t')[0].trim();
+      // 取型號名稱（使用者易讀）與 SDK 版本
+      exec(`adb -s "${serial}" shell getprop ro.product.model`, (modelErr, modelOut) => {
+        exec(`adb -s "${serial}" shell getprop ro.build.version.sdk`, (sdkErr, sdkOut) => {
+          const sdk = parseInt((sdkOut || '').trim(), 10);
+          const model = (modelOut || '').trim() || serial;
+          result.push({
+            id: serial,
+            name: model,
+            platform: 'android',
+            androidSerial: serial,
+            androidSdk: isNaN(sdk) ? null : sdk,
+          });
+          androidPending--;
+          if (androidPending === 0) finishAndroid();
+        });
       });
     });
   });
+});
+
+// 選擇要發送訊號的裝置
+app.post('/api/device/select', (req, res) => {
+  const { id } = req.body;
+  if (typeof id !== 'string' || !id) {
+    return res.json({ success: false, error: '需要提供裝置 id' });
+  }
+  const device = detectedDevices.find(d => d.id === id);
+  if (!device) {
+    return res.json({ success: false, error: '裝置不存在，請先重新整理裝置清單' });
+  }
+  activateDevice(device);
+  res.json({ success: true });
 });
 
 // 送出單一座標
@@ -329,7 +400,8 @@ app.get('/api/status', (req, res) => {
   }
   res.json({
     driver: currentDriver,
-    iosState,   // 'idle' | 'connecting' | 'ready'
+    iosState,        // 'idle' | 'connecting' | 'ready'
+    iosDaemonError,  // null | 'channel_closed'
   });
 });
 

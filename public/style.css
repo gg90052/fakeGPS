@@ -66,12 +66,23 @@ button:disabled {
 
 button:hover:not(:disabled) { background: #b4d0fb; }
 
-#device-status {
-  font-size: 12px;
-  color: #a6e3a1;
-  background: #1e1e2e;
-  padding: 4px 8px;
+select {
+  width: 100%;
+  padding: 6px 8px;
+  background: #45475a;
+  border: 1px solid #585b70;
   border-radius: 4px;
+  color: #cdd6f4;
+  font-size: 13px;
+  cursor: pointer;
+}
+select option {
+  background: #313244;
+  color: #cdd6f4;
+}
+select:disabled {
+  color: #585b70;
+  cursor: not-allowed;
 }
 
 #device-connection-info {
@@ -81,25 +92,6 @@ button:hover:not(:disabled) { background: #b4d0fb; }
   min-height: 16px;
 }
 
-/* D-Pad — 3x3 Grid 八方向 */
-#dpad {
-  display: grid;
-  grid-template-columns: 40px 40px 40px;
-  grid-template-rows: 40px 40px 40px;
-  gap: 4px;
-  justify-content: center;
-  margin: 4px auto;
-}
-#btn-up-left    { grid-column: 1; grid-row: 1; }
-#btn-up         { grid-column: 2; grid-row: 1; }
-#btn-up-right   { grid-column: 3; grid-row: 1; }
-#btn-left       { grid-column: 1; grid-row: 2; }
-#btn-center     { grid-column: 2; grid-row: 2; background: #585b70; }
-#btn-right      { grid-column: 3; grid-row: 2; }
-#btn-down-left  { grid-column: 1; grid-row: 3; }
-#btn-down       { grid-column: 2; grid-row: 3; }
-#btn-down-right { grid-column: 3; grid-row: 3; }
-#dpad button { width: 40px; height: 40px; font-size: 16px; padding: 0; user-select: none; }
 
 /* 航點清單 */
 #waypoint-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }

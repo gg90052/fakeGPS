@@ -22,14 +22,12 @@ function saveState() {
   const lat = coord ? coord.lat : '';
   const lng = coord ? coord.lng : '';
   const speed = document.getElementById('speed-slider').value;
-  const step = document.getElementById('input-step').value;
   const zoom = mapProvider ? mapProvider.getZoom() : 15;
 
   localStorage.setItem(LS_PREFIX + 'lat', lat);
   localStorage.setItem(LS_PREFIX + 'lng', lng);
   localStorage.setItem(LS_PREFIX + 'zoom', zoom);
   localStorage.setItem(LS_PREFIX + 'speed', speed);
-  localStorage.setItem(LS_PREFIX + 'step', step);
   localStorage.setItem(LS_PREFIX + 'waypoints', JSON.stringify(waypoints));
 }
 
@@ -39,7 +37,6 @@ function loadState() {
     lng: parseFloat(localStorage.getItem(LS_PREFIX + 'lng')),
     zoom: parseInt(localStorage.getItem(LS_PREFIX + 'zoom'), 10),
     speed: localStorage.getItem(LS_PREFIX + 'speed'),
-    step: localStorage.getItem(LS_PREFIX + 'step'),
     waypoints: localStorage.getItem(LS_PREFIX + 'waypoints'),
   };
 
@@ -48,13 +45,10 @@ function loadState() {
   const lng = isNaN(saved.lng) ? 121.564722 : saved.lng;
   const zoom = isNaN(saved.zoom) ? 15 : saved.zoom;
 
-  // 速度與步距
+  // 速度
   if (saved.speed) {
     document.getElementById('speed-slider').value = saved.speed;
     document.getElementById('speed-display').textContent = `${saved.speed} km/h`;
-  }
-  if (saved.step) {
-    document.getElementById('input-step').value = saved.step;
   }
 
   // 航點
@@ -628,6 +622,31 @@ function setupControls() {
     showStatus('📍 已回到目前定位');
   });
 
+  // 下拉選單切換裝置
+  document.getElementById('device-select').addEventListener('change', async (e) => {
+    const id = e.target.value;
+    if (!id) return;
+    try {
+      const res = await fetch('/api/device/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const label = e.target.options[e.target.selectedIndex].text;
+        showStatus(`✓ 已切換到：${label}`);
+        // 若為 iOS 裝置，持續輪詢 daemon 狀態
+        deviceRetryCount = 0;
+        deviceRetryTimer = setTimeout(refreshDevice, 500);
+      } else {
+        showStatus(`✗ 切換失敗：${data.error}`, true);
+      }
+    } catch (err) {
+      showStatus(`✗ 切換裝置失敗：${err.message}`, true);
+    }
+  });
+
   // 裝置狀態刷新（手動按鈕：重置重試計數）
   document.getElementById('btn-refresh-device').addEventListener('click', () => {
     deviceRetryCount = 0;
@@ -655,83 +674,12 @@ function setupControls() {
   keepalivePollingTimer = setInterval(refreshKeepalive, 3000);
   refreshKeepalive();
 
-  // =============================================
-  // D-Pad 八方向 + 按住持續移動
-  // =============================================
-  const EARTH_R = 6371000;
-  const DIAG = 1 / Math.SQRT2; // 斜向歸一化 ~0.7071
-
-  function moveLocation(dLat, dLng) {
-    const coord = parseCoordInput();
-    const lat = coord ? coord.lat : 25.0478;
-    const lng = coord ? coord.lng : 121.5319;
-    const step = parseFloat(document.getElementById('input-step').value) || 10;
-    const newLat = lat + (dLat * step / EARTH_R) * (180 / Math.PI);
-    const newLng = lng + (dLng * step / (EARTH_R * Math.cos(lat * Math.PI / 180))) * (180 / Math.PI);
-    setLocation(newLat, newLng, true);
-  }
-
-  // 八方向定義：[dLat, dLng]
-  const directions = {
-    'btn-up':         [1, 0],
-    'btn-down':       [-1, 0],
-    'btn-left':       [0, -1],
-    'btn-right':      [0, 1],
-    'btn-up-left':    [DIAG, -DIAG],
-    'btn-up-right':   [DIAG, DIAG],
-    'btn-down-left':  [-DIAG, -DIAG],
-    'btn-down-right': [-DIAG, DIAG],
-  };
-
-  let dpadTimer = null;
-
-  function startDpadMove(dLat, dLng) {
-    moveLocation(dLat, dLng); // 立即移動一次
-    dpadTimer = setInterval(() => {
-      moveLocation(dLat, dLng);
-    }, 150); // 每 150ms 持續移動
-  }
-
-  function stopDpadMove() {
-    if (dpadTimer) {
-      clearInterval(dpadTimer);
-      dpadTimer = null;
-    }
-  }
-
-  Object.entries(directions).forEach(([id, [dLat, dLng]]) => {
-    const btn = document.getElementById(id);
-    // 滑鼠事件
-    btn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      startDpadMove(dLat, dLng);
-    });
-    btn.addEventListener('mouseup', stopDpadMove);
-    btn.addEventListener('mouseleave', stopDpadMove);
-    // 觸控事件
-    btn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      startDpadMove(dLat, dLng);
-    });
-    btn.addEventListener('touchend', stopDpadMove);
-    btn.addEventListener('touchcancel', stopDpadMove);
-  });
-
-  // 中心按鈕：重新送出當前座標
-  document.getElementById('btn-center').addEventListener('click', () => {
-    const coord = parseCoordInput();
-    if (coord) sendLocation(coord.lat, coord.lng);
-  });
-
   // 速度滑桿即時顯示
   const speedSlider = document.getElementById('speed-slider');
   speedSlider.addEventListener('input', () => {
     document.getElementById('speed-display').textContent = `${speedSlider.value} km/h`;
     saveState();
   });
-
-  // 微調距離變化時儲存
-  document.getElementById('input-step').addEventListener('change', saveState);
 
   // 路徑播放按鈕
   document.getElementById('btn-route-start').addEventListener('click', startRoute);
@@ -756,7 +704,7 @@ function setupControls() {
 }
 
 // =============================================
-// 刷新 ADB 裝置狀態（含自動重試）
+// 刷新裝置清單（含自動重試）
 // =============================================
 let deviceRetryTimer = null;
 let deviceRetryCount = 0;
@@ -766,66 +714,94 @@ const DEVICE_RETRY_MS   = 3000;
 const CONNECTION_LABELS = { wifi: '📶 WiFi', usb: '🔌 USB' };
 const PLATFORM_LABELS   = { ios: ' (iOS)', android: ' (Android)' };
 
+function updateDeviceInfo(devices, selectedId, statusData) {
+  const infoEl = document.getElementById('device-connection-info');
+  if (!selectedId) { infoEl.textContent = ''; infoEl.style.color = ''; return; }
+  const device = devices.find(d => d.id === selectedId);
+  if (!device) { infoEl.textContent = ''; infoEl.style.color = ''; return; }
+
+  // iOS daemon 發生 Channel is closed 等嚴重錯誤
+  if (device.platform === 'ios' && statusData.iosDaemonError === 'channel_closed') {
+    infoEl.textContent = '⚠ iOS 連線中斷（Channel is closed），請重新啟動伺服器';
+    infoEl.style.color = '#f38ba8';
+    return;
+  }
+
+  infoEl.style.color = '';
+  let info = CONNECTION_LABELS[device.connection] ?? '';
+  if (device.platform === 'ios') {
+    const daemonLabel = { ready: '✓ DVT 已就緒', connecting: '⏳ DVT 連線中…', idle: '' };
+    const daemon = daemonLabel[statusData.iosState] ?? '';
+    if (daemon) info += (info ? '　' : '') + daemon;
+  }
+  infoEl.textContent = info;
+}
+
 async function refreshDevice() {
   if (deviceRetryTimer) { clearTimeout(deviceRetryTimer); deviceRetryTimer = null; }
 
-  const statusEl = document.getElementById('device-status');
+  const selectEl = document.getElementById('device-select');
   const infoEl   = document.getElementById('device-connection-info');
-
-  statusEl.textContent = '偵測中…';
-  infoEl.textContent   = '';
+  infoEl.textContent = '';
 
   try {
-    const [deviceRes, statusRes] = await Promise.all([
-      fetch('/api/device'),
+    const [devicesRes, statusRes] = await Promise.all([
+      fetch('/api/devices'),
       fetch('/api/status'),
     ]);
-    const deviceData = await deviceRes.json();
-    const statusData = await statusRes.json();
+    const devicesData = await devicesRes.json();
+    const statusData  = await statusRes.json();
+    const { devices, selectedId } = devicesData;
 
-    if (deviceData.device) {
-      // 裝置已找到
-      deviceRetryCount = 0;
-      const platformLabel   = PLATFORM_LABELS[deviceData.platform] ?? '';
-      const connectionLabel = CONNECTION_LABELS[deviceData.connection] ?? '';
-      statusEl.textContent = deviceData.device + platformLabel;
+    // 重建下拉選單
+    const prevValue = selectEl.value;
+    selectEl.innerHTML = '';
 
-      // 顯示連線方式，再顯示 iOS daemon 狀態
-      let info = connectionLabel;
-      if (deviceData.platform === 'ios') {
-        const daemonLabel = { ready: '✓ DVT 已就緒', connecting: '⏳ DVT 連線中…', idle: '' };
-        const daemon = daemonLabel[statusData.iosState] ?? '';
-        if (daemon) info += (info ? '　' : '') + daemon;
-        // 若 daemon 還在連線中，繼續輪詢直到就緒
-        if (statusData.iosState === 'connecting') {
-          deviceRetryTimer = setTimeout(refreshDevice, DEVICE_RETRY_MS);
-        }
-      }
-      infoEl.textContent = info;
-
-    } else {
-      // 裝置未找到，決定是否自動重試
+    if (!devices || devices.length === 0) {
+      selectEl.add(new Option('-- 未偵測到裝置 --', ''));
+      // 自動重試
       if (deviceRetryCount < DEVICE_MAX_RETRIES) {
-        const remaining = DEVICE_MAX_RETRIES - deviceRetryCount;
-        statusEl.textContent = '等待裝置連線…';
-
-        let hint = '';
-        if (statusData.driver === null) {
-          // tunneld 尚未找到裝置
-          hint = `tunneld 掃描中（剩餘 ${remaining * DEVICE_RETRY_MS / 1000} 秒）`;
-        }
-        infoEl.textContent = hint;
-
+        const remaining = (DEVICE_MAX_RETRIES - deviceRetryCount) * DEVICE_RETRY_MS / 1000;
+        infoEl.textContent = `tunneld 掃描中（剩餘 ${remaining} 秒）`;
         deviceRetryCount++;
         deviceRetryTimer = setTimeout(refreshDevice, DEVICE_RETRY_MS);
       } else {
         deviceRetryCount = 0;
-        statusEl.textContent = '未偵測';
         infoEl.textContent = '逾時，請確認裝置後手動重試';
       }
+      return;
     }
+
+    // 有裝置：填充選單
+    deviceRetryCount = 0;
+    if (devices.length > 1) {
+      selectEl.add(new Option('-- 請選擇裝置 --', ''));
+    }
+    devices.forEach(d => {
+      const connLabel = CONNECTION_LABELS[d.connection] ?? '';
+      const platLabel = PLATFORM_LABELS[d.platform] ?? '';
+      const label = `${d.name}${platLabel}${connLabel ? ' ' + connLabel : ''}`;
+      selectEl.add(new Option(label, d.id));
+    });
+
+    // 恢復上次選擇或使用伺服器選定的裝置
+    const valueToSet = selectedId || prevValue;
+    if (valueToSet && selectEl.querySelector(`option[value="${CSS.escape(valueToSet)}"]`)) {
+      selectEl.value = valueToSet;
+    } else if (selectedId) {
+      selectEl.value = selectedId;
+    }
+
+    updateDeviceInfo(devices, selectEl.value || null, statusData);
+
+    // iOS daemon 連線中，繼續輪詢直到就緒（發生不可恢復錯誤時停止）
+    if (statusData.iosState === 'connecting' && !statusData.iosDaemonError) {
+      deviceRetryTimer = setTimeout(refreshDevice, DEVICE_RETRY_MS);
+    }
+
   } catch {
-    statusEl.textContent = '無法連線到後端';
+    selectEl.innerHTML = '';
+    selectEl.add(new Option('無法連線到後端', ''));
     infoEl.textContent = '';
     deviceRetryCount = 0;
   }

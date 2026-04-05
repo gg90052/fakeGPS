@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Android Fake GPS</title>
+    <title>pikGPS</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   </head>
@@ -20,12 +20,14 @@
         <div id="apikey-status"></div>
       </section>
 
-      <h2>Fake GPS 控制台</h2>
+      <h2>pikGPS 控制台</h2>
 
       <!-- 裝置狀態 -->
       <section>
-        <label>ADB 裝置</label>
-        <div id="device-status">未偵測</div>
+        <label>裝置選擇</label>
+        <select id="device-select">
+          <option value="">-- 偵測中… --</option>
+        </select>
         <div id="device-connection-info"></div>
         <button id="btn-refresh-device">重新整理</button>
         <div id="keepalive-row">
@@ -57,22 +59,6 @@
         </details>
       </section>
 
-      <!-- 方向按鈕 -->
-      <section>
-        <label>微調距離（公尺）</label>
-        <input type="number" id="input-step" value="10" min="1" max="1000" />
-        <div id="dpad">
-          <button id="btn-up-left">↖</button>
-          <button id="btn-up">↑</button>
-          <button id="btn-up-right">↗</button>
-          <button id="btn-left">←</button>
-          <button id="btn-center">●</button>
-          <button id="btn-right">→</button>
-          <button id="btn-down-left">↙</button>
-          <button id="btn-down">↓</button>
-          <button id="btn-down-right">↘</button>
-        </div>
-      </section>
 
       <!-- 路徑規劃 -->
       <section>
