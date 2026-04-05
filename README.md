@@ -1,4 +1,4 @@
-# 🗺️ Android/iOS Fake GPS 控制台
+# 🗺️ pikGPS 控制台
 
 ![Node.js](https://img.shields.io/badge/Node.js-14%2B-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
@@ -39,7 +39,6 @@
 - 🔍 **地點搜尋** — Google Maps 模式使用 Places Autocomplete；OpenStreetMap 模式使用 Nominatim
 - 👁️ **預覽確認流程** — 搜尋、點地圖、手動輸入皆先顯示黃色預覽標記，按「✓ 改變定位」才真正送出
 - ↩ **快速回位** — 圓形按鈕一鍵將地圖視角拉回目前確認的 GPS 位置
-- 🕹️ **八方向 D-Pad** — 含斜向的精細微調，按住持續移動（支援觸控），立即送出無需確認
 - 🔒 **GPS 鎖定（Keepalive）** — 座標送出後伺服器每 2 秒自動重送，防止手機 GPS 回到真實位置
 - 🛤️ **路徑規劃** — 以目前位置為起點，設定 1 個以上航點即可播放；可調速度（1–50 km/h）
 - 🎲 **反偵測隨機性** — 播放時自動加入速度波動 ±25%、GPS 抖動 ±2m、間隔波動 ±20%
@@ -47,7 +46,8 @@
 - 📜 **位置歷史** — 自動記錄最近 10 筆確認位置，點擊可載入為預覽
 - 💾 **狀態持久化** — 所有設定自動儲存至 localStorage，重新整理頁面後完整恢復
 - 📶 **iOS WiFi 連線** — 首次透過 USB 配對後，後續可直接以 WiFi 連線，無需插線
-- 📡 **裝置自動偵測** — 自動偵測 Android / iOS 裝置；裝置連線中時，前端每 3 秒自動重試（最多 60 秒）並顯示連線方式（USB / WiFi）與 DVT 狀態
+- 📡 **裝置自動偵測** — 自動偵測所有 Android / iOS 裝置，以下拉選單呈現；裝置連線中時，前端每 3 秒自動重試（最多 60 秒）並顯示連線方式（USB / WiFi）與 DVT 狀態
+- ⚠️ **iOS 錯誤提示** — DVT 通道異常斷線（Channel is closed）時，裝置選擇區塊會顯示紅色錯誤提示，引導使用者重啟伺服器
 
 ---
 
@@ -222,21 +222,12 @@ adb install appium-settings.apk
 2. 確認位置後按「**✓ 改變定位**」→ 座標送出，紅色主標記移動
 3. 按「**↩**」（圓形按鈕）可隨時將地圖視角拉回紅色標記位置
 
-> **D-Pad 方向鍵**為立即模式，不需預覽確認，直接送出。
-
 ### GPS 鎖定（Keepalive）
 
 座標送出後，伺服器會自動每 2 秒重送相同座標，防止手機 GPS 漂移回真實位置。
 
 - 側邊欄顯示 **🔒 GPS 鎖定中** 表示鎖定中
 - 點「**暫停鎖定**」可暫時停止重送；點「**恢復鎖定**」重新啟動
-
-### D-Pad 微調
-
-- 設定「**微調距離**」（預設 10 公尺）
-- **點擊**：移動一格，立即送出
-- **按住**：持續移動（每 150ms 一次）
-- **中心 ●**：重新送出當前座標（不移動）
 
 ### 路徑規劃與播放
 
@@ -297,7 +288,6 @@ Android 手機                            └─ ios_location_daemon.py（DVT）
 | `fakegps_lat` / `fakegps_lng` | 最後確認座標           |
 | `fakegps_zoom`                | 地圖縮放等級           |
 | `fakegps_speed`               | 速度（km/h）           |
-| `fakegps_step`                | 微調距離（公尺）       |
 | `fakegps_waypoints`           | 航點陣列               |
 | `fakegps_fav_locations`       | 最愛地點清單           |
 | `fakegps_fav_routes`          | 最愛路徑清單           |
@@ -329,6 +319,9 @@ Android 手機                            └─ ios_location_daemon.py（DVT）
 python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
 ```
 
+**iOS 裝置選擇區塊顯示「⚠ iOS 連線中斷（Channel is closed）」**
+→ DVT 通道因各種原因（手機鎖屏、WiFi 切換、系統逾時等）意外關閉。請重新啟動伺服器（Ctrl+C 後再執行 `npm start`），前端會自動重新偵測。
+
 ---
 
 ## 🛠️ 技術棧
@@ -350,7 +343,7 @@ python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
 
 ---
 
-# 🗺️ Android Fake GPS Controller
+# 🗺️ pikGPS Controller
 
 ![Node.js](https://img.shields.io/badge/Node.js-14%2B-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
@@ -390,7 +383,6 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 - 🔍 **Place Search** — Google Places Autocomplete in Google Maps mode; Nominatim in OpenStreetMap mode
 - 👁️ **Preview-First Flow** — Search, map click, or manual input all show a yellow preview marker first; click "✓ Confirm Location" to actually send
 - ↩ **Quick Return** — Circular button to instantly pan the map view back to the current confirmed GPS position
-- 🕹️ **8-Direction D-Pad** — Fine-tune position including diagonals; hold to move continuously (touch-friendly), sent immediately without preview
 - 🔒 **GPS Keepalive** — After sending coordinates, the server automatically resends them every 2 seconds to prevent GPS drift back to real location
 - 🛤️ **Route Planning** — Starts from your current position; only 1 waypoint needed; adjustable speed (1–50 km/h)
 - 🎲 **Anti-Detection Randomness** — Speed variance ±25%, GPS jitter ±2m, interval variance ±20% during playback
@@ -398,7 +390,8 @@ If this tool has been helpful, feel free to buy me a coffee ☕
 - 📜 **Location History** — Automatically records the last 10 confirmed positions; click to load as preview
 - 💾 **State Persistence** — All settings automatically saved to localStorage and restored on page reload
 - 📶 **iOS WiFi Connection** — After the initial USB pairing, subsequent connections can be made over WiFi without a cable
-- 📡 **Auto Device Detection** — Automatically detects Android / iOS devices; while connecting, the frontend retries every 3 seconds (up to 60 seconds) and displays the connection type (USB / WiFi) and DVT status
+- 📡 **Auto Device Detection** — Automatically detects all Android / iOS devices and presents them in a dropdown; while connecting, the frontend retries every 3 seconds (up to 60 seconds) and displays the connection type (USB / WiFi) and DVT status
+- ⚠️ **iOS Error Notification** — When the DVT channel drops unexpectedly (Channel is closed), a red error message appears in the device selector, prompting a server restart
 
 ---
 
@@ -573,21 +566,12 @@ All input methods use a two-step preview → confirm workflow:
 2. Confirm the position by clicking **✓ Confirm Location** → Coordinates are sent, red marker moves
 3. Click the **↩** circular button anytime to pan the map view back to the red confirmed marker
 
-> **D-Pad directional buttons** use instant mode — coordinates are sent immediately without preview.
-
 ### GPS Keepalive
 
 After sending coordinates, the server automatically resends them every 2 seconds to prevent GPS drift.
 
 - Sidebar shows **🔒 GPS Locked** when active
 - Click **Pause Lock** to stop resending; click **Resume Lock** to restart
-
-### D-Pad Fine-Tuning
-
-- Set the **Step Distance** (default: 10 meters)
-- **Click**: Move one step, sent immediately
-- **Hold**: Move continuously (every 150ms)
-- **Center ●**: Resend the current coordinates without moving
 
 ### Route Planning & Playback
 
@@ -648,7 +632,6 @@ Uses recursive `setTimeout` (not `setInterval`) for variable-interval updates, s
 | `fakegps_lat` / `fakegps_lng` | Last confirmed coordinates          |
 | `fakegps_zoom`                | Map zoom level                      |
 | `fakegps_speed`               | Speed (km/h)                        |
-| `fakegps_step`                | Step distance (meters)              |
 | `fakegps_waypoints`           | Waypoints array                     |
 | `fakegps_fav_locations`       | Saved favorite locations            |
 | `fakegps_fav_routes`          | Saved favorite routes               |
@@ -679,6 +662,9 @@ Uses recursive `setTimeout` (not `setInterval`) for variable-interval updates, s
 ```bash
 python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
 ```
+
+**Device selector shows "⚠ iOS 連線中斷（Channel is closed）"**
+→ The DVT channel closed unexpectedly (screen lock, WiFi switch, system timeout, etc.). Restart the server (Ctrl+C then `npm start`) — the frontend will re-detect automatically.
 
 ---
 

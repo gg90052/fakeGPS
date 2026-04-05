@@ -94,6 +94,7 @@ npm start
 | `QuicProtocolNotSupportedError`（iOS 18.2+） | 需要 Python 3.13：`brew install python@3.13`，然後在專案目錄重建 venv |
 | 等待 60 秒後仍未偵測到裝置 | 確認 iPhone 與 Mac 在同一個 WiFi；或改用 USB 連線；tunneld 初次掃描約需 15–30 秒 |
 | WiFi 連線後裝置消失 | 確認手機螢幕未鎖定（部分情況鎖屏會斷開 mDNS）；或拔插 USB 重新信任 |
+| 裝置選擇顯示「Channel is closed」| DVT 通道中斷；重新啟動伺服器：Ctrl+C → `npm start` |
 | `pymobiledevice3: command not found` | 執行 `python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"` |
 | `xcode-select: error`（macOS） | 執行 `xcode-select --install` |
 | tunneld 無法啟動（Windows） | 確認已安裝 WireGuard；確認以系統管理員身份執行 PowerShell |
@@ -158,6 +159,7 @@ Verify device detection (optional):
 | `QuicProtocolNotSupportedError` (iOS 18.2+) | Python 3.13 is required: `brew install python@3.13`, then recreate the venv in the project directory |
 | No device detected after 60 seconds | Confirm iPhone and Mac are on the same WiFi; or switch to USB; tunneld initial scan takes ~15–30 sec |
 | Device disappears after WiFi connection | Ensure phone screen is not locked (lock screen can break mDNS in some cases); or re-plug USB and tap "Trust" |
+| Device selector shows "Channel is closed" | DVT channel dropped; restart the server: Ctrl+C → `npm start` |
 | `pymobiledevice3: command not found` | Run `python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"` |
 | `xcode-select: error` (macOS) | Run `xcode-select --install` |
 | tunneld won't start (Windows) | Confirm WireGuard is installed; confirm PowerShell is running as Administrator |
@@ -185,8 +187,8 @@ npm start
 
 | 功能 / Feature | 使用方式 / How to use |
 |---------|-----------|
+| 選擇裝置 / Select device | 下拉選單選擇目標裝置 / Use the dropdown to pick the target device |
 | 設定位置 / Set location | 搜尋 / 點地圖 / 輸入座標 → 黃色預覽標記 → **✓ 改變定位** |
-| D-Pad 微調 / D-Pad nudge | 直接移動，無需確認 / Buttons move instantly (no confirm needed) |
 | GPS 鎖定 / GPS Keepalive | 送出後自動啟用，顯示 🔒 / Auto-enabled after any location send — shows 🔒 in sidebar |
 | 路徑播放 / Route playback | 開啟航點模式 → 新增 1+ 航點 → ▶ 開始播放 / Waypoint mode → add 1+ points → ▶ Start |
 | 最愛 / Favorites | ★ 儲存；📍 / ▶ 載入 / ★ to save; 📍 / ▶ to load |
@@ -201,6 +203,7 @@ npm start
 | 未偵測到裝置 / No device detected | 重新插拔 USB；確認手機點了「允許 USB 偵錯」/ Re-plug USB; accept "Allow USB Debugging" prompt |
 | GPS 沒有改變 / GPS not changing | 開發者選項設定 Appium Settings 為模擬位置 App / Set **Appium Settings** as mock location app in Developer Options |
 | GPS 漂回真實位置 / GPS drifts back | 確認側邊欄顯示 🔒；若無則點「恢復鎖定」/ Check sidebar shows 🔒; click "恢復鎖定" if needed |
+| iOS 顯示 "Channel is closed" | 重新啟動伺服器（Ctrl+C → `npm start`）/ Restart the server (Ctrl+C → `npm start`) |
 | `adb` 找不到 / `adb` not found | 將 platform-tools 加入 PATH 後重開終端機 / Add platform-tools to PATH and reopen terminal |
 | 地圖空白 / Map blank | 確認 API Key 正確，或清除改用免費 OpenStreetMap / Check API Key is valid, or clear it to use free OpenStreetMap |
 
