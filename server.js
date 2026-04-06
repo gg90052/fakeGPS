@@ -13,6 +13,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 路徑播放狀態
 let routeTimer = null;
 let routeCurrentPos = null; // { lat, lng } 播放中的當前座標
+let routePaused = false;    // 是否暫停中
+let _routeState = null;     // 暫停 / 恢復時保存的播放細節
 
 // Android 版本自動偵測：Android 8+（API 26+）需使用 start-foreground-service
 let useForegroundService = false;
@@ -269,6 +271,83 @@ app.post('/api/location', (req, res) => {
   res.json({ success: true });
 });
 
+// =============================================
+// 路徑播放核心 tick（使用模組層級狀態，支援暫停/恢復）
+// =============================================
+function _routeTick() {
+  const state = _routeState;
+  if (!state) return;
+
+  const { waypoints, speedConfig } = state;
+  const { baseStepMeters, GPS_JITTER_METERS, SPEED_VARIANCE, INTERVAL_VARIANCE, BASE_INTERVAL_MS } = speedConfig;
+
+  if (state.segIndex >= waypoints.length - 1) {
+    const endJittered = addGpsJitter(
+      waypoints[waypoints.length - 1].lat,
+      waypoints[waypoints.length - 1].lng,
+      GPS_JITTER_METERS
+    );
+    sendLocation(endJittered.lat, endJittered.lng);
+    routeCurrentPos = { lat: endJittered.lat, lng: endJittered.lng };
+    startKeepalive(endJittered.lat, endJittered.lng);
+    routeTimer = null;
+    _routeState = null;
+    return;
+  }
+
+  const speedFactor = randomBetween(1 - SPEED_VARIANCE, 1 + SPEED_VARIANCE);
+  state.progress += baseStepMeters * speedFactor;
+
+  while (state.segIndex < waypoints.length - 1) {
+    const segDist = haversineDistance(
+      waypoints[state.segIndex].lat, waypoints[state.segIndex].lng,
+      waypoints[state.segIndex + 1].lat, waypoints[state.segIndex + 1].lng
+    );
+    if (segDist === 0) { state.segIndex++; continue; }
+    if (state.progress >= segDist) {
+      state.progress -= segDist;
+      state.segIndex++;
+      if (state.segIndex >= waypoints.length - 1) {
+        const endJittered = addGpsJitter(
+          waypoints[waypoints.length - 1].lat,
+          waypoints[waypoints.length - 1].lng,
+          GPS_JITTER_METERS
+        );
+        sendLocation(endJittered.lat, endJittered.lng);
+        routeCurrentPos = { lat: endJittered.lat, lng: endJittered.lng };
+        routeTimer = null;
+        _routeState = null;
+        startKeepalive(endJittered.lat, endJittered.lng);
+        return;
+      }
+    } else {
+      break;
+    }
+  }
+
+  if (state.segIndex >= waypoints.length - 1) {
+    if (routeCurrentPos) startKeepalive(routeCurrentPos.lat, routeCurrentPos.lng);
+    routeTimer = null;
+    _routeState = null;
+    return;
+  }
+
+  const segDist = haversineDistance(
+    waypoints[state.segIndex].lat, waypoints[state.segIndex].lng,
+    waypoints[state.segIndex + 1].lat, waypoints[state.segIndex + 1].lng
+  );
+  const t = segDist > 0 ? state.progress / segDist : 0;
+  const lat = waypoints[state.segIndex].lat + t * (waypoints[state.segIndex + 1].lat - waypoints[state.segIndex].lat);
+  const lng = waypoints[state.segIndex].lng + t * (waypoints[state.segIndex + 1].lng - waypoints[state.segIndex].lng);
+
+  const jittered = addGpsJitter(lat, lng, GPS_JITTER_METERS);
+  sendLocation(jittered.lat, jittered.lng);
+  routeCurrentPos = { lat: jittered.lat, lng: jittered.lng };
+
+  const intervalFactor = randomBetween(1 - INTERVAL_VARIANCE, 1 + INTERVAL_VARIANCE);
+  routeTimer = setTimeout(_routeTick, Math.round(BASE_INTERVAL_MS * intervalFactor));
+}
+
 app.post('/api/route/start', (req, res) => {
   const { waypoints, speed_kmh } = req.body;
   if (!Array.isArray(waypoints) || waypoints.length < 2) {
@@ -281,114 +360,71 @@ app.post('/api/route/start', (req, res) => {
       return res.json({ success: false, error: '航點座標無效或超出範圍' });
     }
   }
-  // 驗證 speed_kmh 必須為正數
   if (typeof speed_kmh !== 'number' || speed_kmh <= 0) {
     return res.json({ success: false, error: '速度必須為正數' });
   }
+
   stopKeepalive();
   if (routeTimer) { clearTimeout(routeTimer); routeTimer = null; }
 
   const BASE_INTERVAL_MS = 500;
-  const speedMs = (speed_kmh * 1000) / 3600; // 公尺/秒
-  const baseStepMeters = speedMs * (BASE_INTERVAL_MS / 1000); // 基準每次移動距離
-  const GPS_JITTER_METERS = 2; // GPS 抖動範圍（公尺）
-  const SPEED_VARIANCE = 0.25; // 速度隨機波動 ±25%
-  const INTERVAL_VARIANCE = 0.2; // 間隔隨機波動 ±20%
+  const speedMs = (speed_kmh * 1000) / 3600;
+  const speedConfig = {
+    baseStepMeters: speedMs * (BASE_INTERVAL_MS / 1000),
+    GPS_JITTER_METERS: 2,
+    SPEED_VARIANCE: 0.25,
+    INTERVAL_VARIANCE: 0.2,
+    BASE_INTERVAL_MS,
+  };
 
-  let segIndex = 0;
-  let progress = 0; // 在當前線段上已走的公尺
+  _routeState = { waypoints, segIndex: 0, progress: 0, speedConfig };
+  routePaused = false;
 
-  // 先送出起點座標（帶 GPS 抖動）
-  const startJittered = addGpsJitter(waypoints[0].lat, waypoints[0].lng, GPS_JITTER_METERS);
+  // 先送出起點
+  const startJittered = addGpsJitter(waypoints[0].lat, waypoints[0].lng, speedConfig.GPS_JITTER_METERS);
   sendLocation(startJittered.lat, startJittered.lng);
   routeCurrentPos = { lat: startJittered.lat, lng: startJittered.lng };
 
-  // 使用遞迴 setTimeout 實現不等間隔（比 setInterval 更自然）
-  function tick() {
-    if (segIndex >= waypoints.length - 1) {
-      if (routeCurrentPos) startKeepalive(routeCurrentPos.lat, routeCurrentPos.lng);
-      routeTimer = null;
-      return;
-    }
-
-    // 隨機化本次移動距離（模擬步行速度不均）
-    const speedFactor = randomBetween(1 - SPEED_VARIANCE, 1 + SPEED_VARIANCE);
-    const stepMeters = baseStepMeters * speedFactor;
-    progress += stepMeters;
-
-    // 跨越線段時累計 progress
-    while (segIndex < waypoints.length - 1) {
-      const segDist = haversineDistance(
-        waypoints[segIndex].lat, waypoints[segIndex].lng,
-        waypoints[segIndex + 1].lat, waypoints[segIndex + 1].lng
-      );
-      if (segDist === 0) { segIndex++; continue; }
-      if (progress >= segDist) {
-        progress -= segDist;
-        segIndex++;
-        if (segIndex >= waypoints.length - 1) {
-          const endJittered = addGpsJitter(
-            waypoints[waypoints.length - 1].lat,
-            waypoints[waypoints.length - 1].lng,
-            GPS_JITTER_METERS
-          );
-          sendLocation(endJittered.lat, endJittered.lng);
-          routeCurrentPos = { lat: endJittered.lat, lng: endJittered.lng };
-          routeTimer = null;
-          startKeepalive(endJittered.lat, endJittered.lng);
-          return;
-        }
-      } else {
-        break;
-      }
-    }
-
-    if (segIndex >= waypoints.length - 1) {
-      if (routeCurrentPos) startKeepalive(routeCurrentPos.lat, routeCurrentPos.lng);
-      routeTimer = null; return;
-    }
-
-    const segDist = haversineDistance(
-      waypoints[segIndex].lat, waypoints[segIndex].lng,
-      waypoints[segIndex + 1].lat, waypoints[segIndex + 1].lng
-    );
-    const t = segDist > 0 ? progress / segDist : 0;
-    const lat = waypoints[segIndex].lat + t * (waypoints[segIndex + 1].lat - waypoints[segIndex].lat);
-    const lng = waypoints[segIndex].lng + t * (waypoints[segIndex + 1].lng - waypoints[segIndex].lng);
-
-    // 加入 GPS 抖動
-    const jittered = addGpsJitter(lat, lng, GPS_JITTER_METERS);
-    sendLocation(jittered.lat, jittered.lng);
-    routeCurrentPos = { lat: jittered.lat, lng: jittered.lng };
-
-    // 隨機化下次 tick 間隔
-    const intervalFactor = randomBetween(1 - INTERVAL_VARIANCE, 1 + INTERVAL_VARIANCE);
-    const nextInterval = Math.round(BASE_INTERVAL_MS * intervalFactor);
-    routeTimer = setTimeout(tick, nextInterval);
-  }
-
-  // 啟動第一次 tick
   const firstInterval = Math.round(BASE_INTERVAL_MS * randomBetween(0.8, 1.2));
-  routeTimer = setTimeout(tick, firstInterval);
+  routeTimer = setTimeout(_routeTick, firstInterval);
 
+  res.json({ success: true });
+});
+
+app.post('/api/route/pause', (req, res) => {
+  if (!routeTimer) return res.json({ success: false, error: '目前沒有正在播放的路徑' });
+  clearTimeout(routeTimer);
+  routeTimer = null;
+  routePaused = true;
+  if (routeCurrentPos) startKeepalive(routeCurrentPos.lat, routeCurrentPos.lng);
+  res.json({ success: true, currentPos: routeCurrentPos });
+});
+
+app.post('/api/route/resume', (req, res) => {
+  if (!routePaused || !_routeState) return res.json({ success: false, error: '目前不在暫停狀態' });
+  stopKeepalive();
+  routePaused = false;
+  const { BASE_INTERVAL_MS } = _routeState.speedConfig;
+  const firstInterval = Math.round(BASE_INTERVAL_MS * randomBetween(0.8, 1.2));
+  routeTimer = setTimeout(_routeTick, firstInterval);
   res.json({ success: true });
 });
 
 app.post('/api/route/stop', (req, res) => {
-  if (routeTimer) {
-    clearTimeout(routeTimer);
-    routeTimer = null;
-  }
+  if (routeTimer) { clearTimeout(routeTimer); routeTimer = null; }
+  routePaused = false;
+  const lastPos = routeCurrentPos;   // 清除前先保留
   if (routeCurrentPos) {
     startKeepalive(routeCurrentPos.lat, routeCurrentPos.lng);
     routeCurrentPos = null;
   }
-  res.json({ success: true });
+  _routeState = null;
+  res.json({ success: true, lastPos });
 });
 
 // 查詢路徑播放狀態
 app.get('/api/route/status', (req, res) => {
-  res.json({ playing: routeTimer !== null, currentPos: routeCurrentPos });
+  res.json({ playing: routeTimer !== null, paused: routePaused, currentPos: routeCurrentPos });
 });
 
 // 查詢伺服器與 iOS daemon 狀態

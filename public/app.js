@@ -736,8 +736,8 @@ function setupControls() {
   });
 
   // 路徑播放按鈕
-  document.getElementById('btn-route-start').addEventListener('click', startRoute);
-  document.getElementById('btn-route-stop').addEventListener('click', stopRoute);
+  document.getElementById('btn-route-start').addEventListener('click', onRouteStartClick);
+  document.getElementById('btn-route-stop').addEventListener('click', onRouteStopClick);
   document.getElementById('btn-route-clear').addEventListener('click', clearWaypoints);
   document.getElementById('btn-toggle-waypoint-mode').addEventListener('click', toggleWaypointMode);
 
@@ -805,7 +805,6 @@ async function refreshDevice() {
 
   const selectEl = document.getElementById('device-select');
   const infoEl   = document.getElementById('device-connection-info');
-  infoEl.textContent = '';
 
   try {
     const [devicesRes, statusRes] = await Promise.all([
@@ -891,8 +890,7 @@ async function refreshKeepalive() {
 // =============================================
 // 航點模式切換
 // =============================================
-function toggleWaypointMode() {
-  waypointMode = !waypointMode;
+function applyWaypointModeUI() {
   const btn = document.getElementById('btn-toggle-waypoint-mode');
   btn.textContent = waypointMode ? '關閉航點模式' : '開啟航點模式';
   btn.style.background = waypointMode ? '#a6e3a1' : '';
@@ -900,6 +898,11 @@ function toggleWaypointMode() {
   document.getElementById('waypoint-mode-hint').textContent = waypointMode
     ? '點擊地圖新增航點'
     : '在地圖上點擊新增航點（先開啟模式）';
+}
+
+function toggleWaypointMode() {
+  waypointMode = !waypointMode;
+  applyWaypointModeUI();
 }
 
 // =============================================
@@ -922,7 +925,7 @@ function addWaypoint(lat, lng) {
   const waypointMarker = mapProvider.createWaypointMarker(lat, lng, waypoints.length);
   waypointMarkers.push(waypointMarker);
   renderWaypointList();
-  document.getElementById('btn-route-start').disabled = waypoints.length < 1;
+  updateRouteButtons();
   saveState();
 }
 
@@ -936,7 +939,7 @@ function removeWaypoint(index) {
   // 重新標號
   waypointMarkers.forEach((m, i) => mapProvider.setMarkerLabel(m, i + 1));
   renderWaypointList();
-  document.getElementById('btn-route-start').disabled = waypoints.length < 1;
+  updateRouteButtons();
   saveState();
 }
 
@@ -949,7 +952,8 @@ function clearWaypoints() {
   waypointMarkers = [];
   if (routePolyline) { mapProvider.removePolyline(routePolyline); routePolyline = null; }
   renderWaypointList();
-  document.getElementById('btn-route-start').disabled = true;
+  updateRouteButtons();
+  applyWaypointModeUI();
   saveState();
 }
 
@@ -968,6 +972,53 @@ function renderWaypointList() {
     li.appendChild(del);
     list.appendChild(li);
   });
+}
+
+// =============================================
+// 路徑播放狀態管理
+// =============================================
+let isRoutePlaying = false; // 正在播放（非暫停）
+let isRoutePaused = false;  // 暫停中
+
+function updateRouteButtons() {
+  const btnStart = document.getElementById('btn-route-start');
+  const btnStop  = document.getElementById('btn-route-stop');
+  const hint     = document.getElementById('no-waypoint-hint');
+  btnStart.classList.remove('btn-green', 'btn-yellow');
+  if (isRoutePlaying) {
+    btnStart.textContent = '⏸ 暫停';
+    btnStart.classList.add('btn-yellow');
+    btnStart.disabled = false;
+    btnStop.disabled = false;
+    hint.textContent = '';
+  } else if (isRoutePaused) {
+    btnStart.textContent = '▶ 繼續播放';
+    btnStart.classList.add('btn-green');
+    btnStart.disabled = false;
+    btnStop.disabled = false;
+    hint.textContent = '';
+  } else {
+    btnStart.textContent = '▶ 開始播放';
+    btnStart.classList.add('btn-green');
+    btnStart.disabled = waypoints.length < 1;
+    btnStop.disabled = true;
+    hint.textContent = waypoints.length < 1 ? '請先新增航點後才可播放' : '';
+  }
+}
+
+function onRouteStartClick() {
+  if (isRoutePlaying) {
+    pauseRoute();
+  } else if (isRoutePaused) {
+    resumeRoute();
+  } else {
+    startRoute();
+  }
+}
+
+function onRouteStopClick() {
+  if (!confirm('停止後將清除所有路徑並停留在最後的座標，是否繼續？')) return;
+  stopRoute();
 }
 
 // =============================================
@@ -996,53 +1047,15 @@ async function startRoute() {
     const data = await res.json();
     if (data.success) {
       showStatus('▶ 路徑播放中...');
-      document.getElementById('btn-route-start').disabled = true;
-      document.getElementById('btn-route-stop').disabled = false;
+      isRoutePlaying = true;
+      isRoutePaused = false;
+      updateRouteButtons();
 
       // 畫出路線 polyline
       if (routePolyline) mapProvider.removePolyline(routePolyline);
       routePolyline = mapProvider.createPolyline(waypoints);
 
-      // 開始輪詢路徑播放狀態
-      routePollingTimer = setInterval(async () => {
-        try {
-          const statusRes = await fetch('/api/route/status');
-          const statusData = await statusRes.json();
-
-          // 更新 marker 到當前播放座標
-          if (statusData.currentPos) {
-            const { lat, lng } = statusData.currentPos;
-            setCoordInput(lat, lng);
-            if (marker) {
-              mapProvider.setMarkerPosition(marker, lat, lng);
-            } else {
-              marker = mapProvider.createMainMarker(lat, lng);
-            }
-          }
-
-          if (!statusData.playing) {
-            // 路徑播放結束
-            clearInterval(routePollingTimer);
-            routePollingTimer = null;
-            document.getElementById('btn-route-stop').disabled = true;
-            showStatus('✓ 路徑播放完成');
-            refreshKeepalive();
-
-            // 更新 confirmedPos 到終點
-            if (statusData.currentPos) {
-              confirmedPos = { lat: statusData.currentPos.lat, lng: statusData.currentPos.lng };
-              updateBackButton();
-            }
-
-            // 詢問是否清除所有航點
-            if (waypoints.length > 0 && confirm('路徑播放完成，是否清除所有航點？')) {
-              clearWaypoints();
-            }
-
-            document.getElementById('btn-route-start').disabled = waypoints.length < 1;
-          }
-        } catch { /* 忽略輪詢錯誤 */ }
-      }, 1000);
+      startRoutePolling();
     } else {
       showStatus(`✗ ${data.error}`, true);
     }
@@ -1052,20 +1065,120 @@ async function startRoute() {
 }
 
 // =============================================
-// 停止路徑播放
+// 暫停路徑播放
+// =============================================
+async function pauseRoute() {
+  try {
+    const res = await fetch('/api/route/pause', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      // 用伺服器回傳的精確座標更新 confirmedPos，避免依賴 polling 時序
+      if (data.currentPos) {
+        const { lat, lng } = data.currentPos;
+        confirmedPos = { lat, lng };
+        setCoordInput(lat, lng);
+        if (marker) mapProvider.setMarkerPosition(marker, lat, lng);
+        updateBackButton();
+      }
+      isRoutePlaying = false;
+      isRoutePaused = true;
+      updateRouteButtons();
+      if (routePollingTimer) { clearInterval(routePollingTimer); routePollingTimer = null; }
+      showStatus('⏸ 路徑已暫停');
+      refreshKeepalive();
+    } else {
+      showStatus(`✗ ${data.error}`, true);
+    }
+  } catch (e) {
+    showStatus(`✗ ${e.message}`, true);
+  }
+}
+
+// =============================================
+// 繼續路徑播放
+// =============================================
+async function resumeRoute() {
+  try {
+    const res = await fetch('/api/route/resume', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      isRoutePlaying = true;
+      isRoutePaused = false;
+      updateRouteButtons();
+      showStatus('▶ 繼續播放...');
+      startRoutePolling();
+    } else {
+      showStatus(`✗ ${data.error}`, true);
+    }
+  } catch (e) {
+    showStatus(`✗ ${e.message}`, true);
+  }
+}
+
+// =============================================
+// 停止路徑播放（清除路徑）
 // =============================================
 async function stopRoute() {
   try {
-    await fetch('/api/route/stop', { method: 'POST' });
-    showStatus('■ 路徑播放已停止');
+    const res = await fetch('/api/route/stop', { method: 'POST' });
+    const data = await res.json();
+    // 用伺服器回傳的最後座標更新 confirmedPos，確保下次路徑從正確位置出發
+    if (data.lastPos) {
+      const { lat, lng } = data.lastPos;
+      confirmedPos = { lat, lng };
+      setCoordInput(lat, lng);
+      if (marker) mapProvider.setMarkerPosition(marker, lat, lng);
+      updateBackButton();
+    }
     refreshKeepalive();
-  } catch {
-    showStatus('■ 停止（無法連線後端）', true);
-  }
-  if (routePollingTimer) {
-    clearInterval(routePollingTimer);
-    routePollingTimer = null;
-  }
-  document.getElementById('btn-route-start').disabled = waypoints.length < 2;
-  document.getElementById('btn-route-stop').disabled = true;
+  } catch { /* 忽略 */ }
+  if (routePollingTimer) { clearInterval(routePollingTimer); routePollingTimer = null; }
+  isRoutePlaying = false;
+  isRoutePaused = false;
+  updateRouteButtons();
+  clearWaypoints();
+  showStatus('■ 路徑播放已停止');
+}
+
+// =============================================
+// 輪詢路徑播放狀態
+// =============================================
+function startRoutePolling() {
+  if (routePollingTimer) clearInterval(routePollingTimer);
+  routePollingTimer = setInterval(async () => {
+    try {
+      const statusRes = await fetch('/api/route/status');
+      const statusData = await statusRes.json();
+
+      // 更新 marker 到當前播放座標，並同步 confirmedPos
+      if (statusData.currentPos) {
+        const { lat, lng } = statusData.currentPos;
+        setCoordInput(lat, lng);
+        if (marker) {
+          mapProvider.setMarkerPosition(marker, lat, lng);
+        } else {
+          marker = mapProvider.createMainMarker(lat, lng);
+        }
+        confirmedPos = { lat, lng };
+        updateBackButton();
+      }
+
+      if (!statusData.playing && !statusData.paused) {
+        // 路徑播放自然結束
+        clearInterval(routePollingTimer);
+        routePollingTimer = null;
+        isRoutePlaying = false;
+        isRoutePaused = false;
+        showStatus('✓ 路徑播放完成');
+        refreshKeepalive();
+
+        if (statusData.currentPos) {
+          confirmedPos = { lat: statusData.currentPos.lat, lng: statusData.currentPos.lng };
+          updateBackButton();
+        }
+
+        updateRouteButtons();
+      }
+    } catch { /* 忽略輪詢錯誤 */ }
+  }, 1000);
 }

@@ -74,10 +74,11 @@
         <input type="range" id="speed-slider" min="1" max="50" value="10" />
         <span id="speed-display">10 km/h</span>
         <div>
-          <button id="btn-route-start" disabled>▶ 開始播放</button>
-          <button id="btn-route-stop" disabled>■ 停止</button>
+          <button id="btn-route-start" class="btn-green" disabled>▶ 開始播放</button>
+          <button id="btn-route-stop" class="btn-red" disabled>■ 停止</button>
           <button id="btn-route-clear">清除航點</button>
         </div>
+        <p id="no-waypoint-hint">請先新增航點後才可播放</p>
         <button id="btn-fav-save-route">★ 儲存路徑</button>
         <ul id="fav-route-list"></ul>
       </section>

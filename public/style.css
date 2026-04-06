@@ -66,6 +66,25 @@ button:disabled {
 
 button:hover:not(:disabled) { background: #b4d0fb; }
 
+button.btn-green                      { background: #a6e3a1; color: #1e1e2e; }
+button.btn-green:hover:not(:disabled) { background: #c3f0bf; }
+button.btn-green:disabled             { background: #45475a; color: #585b70; }
+
+button.btn-yellow                      { background: #f9e2af; color: #1e1e2e; }
+button.btn-yellow:hover:not(:disabled) { background: #fceece; }
+button.btn-yellow:disabled             { background: #45475a; color: #585b70; }
+
+button.btn-red                      { background: #f38ba8; color: #1e1e2e; }
+button.btn-red:hover:not(:disabled) { background: #f7afc0; }
+button.btn-red:disabled             { background: #45475a; color: #585b70; }
+
+#no-waypoint-hint {
+  font-size: 11px;
+  color: #6c7086;
+  margin: 2px 0 0;
+  min-height: 1.4em;
+}
+
 select {
   width: 100%;
   padding: 6px 8px;
