@@ -775,7 +775,6 @@ const DEVICE_MAX_RETRIES = 20;   // 20 次 × 3 秒 = 最多等 60 秒
 const DEVICE_RETRY_MS   = 3000;
 
 const CONNECTION_LABELS = { wifi: '📶 WiFi', usb: '🔌 USB' };
-const PLATFORM_LABELS   = { ios: ' (iOS)', android: ' (Android)' };
 
 function updateDeviceInfo(devices, selectedId, statusData) {
   const infoEl = document.getElementById('device-connection-info');
@@ -784,7 +783,7 @@ function updateDeviceInfo(devices, selectedId, statusData) {
   if (!device) { infoEl.textContent = ''; infoEl.style.color = ''; return; }
 
   // iOS daemon 發生 Channel is closed 等嚴重錯誤
-  if (device.platform === 'ios' && statusData.iosDaemonError === 'channel_closed') {
+  if (statusData.iosDaemonError === 'channel_closed') {
     infoEl.textContent = '⚠ iOS 連線中斷（Channel is closed），請重新啟動伺服器';
     infoEl.style.color = '#f38ba8';
     return;
@@ -792,11 +791,9 @@ function updateDeviceInfo(devices, selectedId, statusData) {
 
   infoEl.style.color = '';
   let info = CONNECTION_LABELS[device.connection] ?? '';
-  if (device.platform === 'ios') {
-    const daemonLabel = { ready: '✓ DVT 已就緒', connecting: '⏳ DVT 連線中…', idle: '' };
-    const daemon = daemonLabel[statusData.iosState] ?? '';
-    if (daemon) info += (info ? '　' : '') + daemon;
-  }
+  const daemonLabel = { ready: '✓ DVT 已就緒', connecting: '⏳ DVT 連線中…', idle: '' };
+  const daemon = daemonLabel[statusData.iosState] ?? '';
+  if (daemon) info += (info ? '　' : '') + daemon;
   infoEl.textContent = info;
 }
 
@@ -841,8 +838,7 @@ async function refreshDevice() {
     }
     devices.forEach(d => {
       const connLabel = CONNECTION_LABELS[d.connection] ?? '';
-      const platLabel = PLATFORM_LABELS[d.platform] ?? '';
-      const label = `${d.name}${platLabel}${connLabel ? ' ' + connLabel : ''}`;
+      const label = `${d.name}${connLabel ? ' ' + connLabel : ''}`;
       selectEl.add(new Option(label, d.id));
     });
 
