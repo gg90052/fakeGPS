@@ -1,10 +1,7 @@
 {
-  "name": "android-fakegps",
+  "name": "pikgps",
   "version": "1.0.0",
   "main": "server.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "start": "node start.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -12,7 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "iOS GPS 位置模擬控制台",
   "dependencies": {
     "express": "^5.2.1"
   }
