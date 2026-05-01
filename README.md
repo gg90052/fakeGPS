@@ -3,10 +3,9 @@
 ![Node.js](https://img.shields.io/badge/Node.js-14%2B-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-17%2B-000000?logo=apple&logoColor=white)
 
-一個基於 Node.js 的本地網頁工具，透過 ADB 將虛擬 GPS 座標發送到 Android 手機的 Appium Settings。支援 Google Maps（需 API Key）或 OpenStreetMap（免費，無需任何 Key）雙地圖系統、路徑規劃播放、GPS 鎖定與最愛地點管理。
+一個基於 Node.js 的本地網頁工具，透過 pymobiledevice3 DVT LocationSimulation 將虛擬 GPS 座標發送到 iOS 裝置。支援 Google Maps（需 API Key）或 OpenStreetMap（免費，無需任何 Key）雙地圖系統、路徑規劃播放、GPS 鎖定與最愛地點管理。
 
 > **⚠️ 免責聲明**：本工具僅供個人開發測試使用。在遊戲或應用程式中使用假 GPS 可能違反服務條款，使用者需自行承擔風險。
 
@@ -47,30 +46,24 @@
 - 📜 **位置歷史** — 自動記錄最近 10 筆確認位置，點擊可載入為預覽
 - 💾 **狀態持久化** — 所有設定自動儲存至 localStorage，重新整理頁面後完整恢復
 - 📶 **iOS WiFi 連線** — 首次透過 USB 配對後，後續可直接以 WiFi 連線，無需插線
-- 📡 **裝置自動偵測** — 自動偵測所有 Android / iOS 裝置，以下拉選單呈現；裝置連線中時，前端每 3 秒自動重試（最多 60 秒）並顯示連線方式（USB / WiFi）與 DVT 狀態
+- 📡 **裝置自動偵測** — 自動偵測所有 iOS 裝置，以下拉選單呈現；裝置連線中時，前端每 3 秒自動重試（最多 60 秒）並顯示連線方式（USB / WiFi）與 DVT 狀態
 - ⚠️ **iOS 錯誤提示** — DVT 通道異常斷線（Channel is closed）時，裝置選擇區塊會顯示紅色錯誤提示，引導使用者重啟伺服器
 
 ---
 
 ## 系統需求
 
-| 項目                       | 需求                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| Node.js                    | 14.0 以上                                                                    |
-| ADB (Android Debug Bridge) | 任意版本                                                                     |
-| Android 手機               | Android 8.0 以上（建議 10+）                                                 |
-| Google Maps API Key        | 選用；啟用 Maps JavaScript API 與 Places API（留空則使用免費 OpenStreetMap） |
+| 項目              | 需求                                                                         |
+| ----------------- | ---------------------------------------------------------------------------- |
+| Node.js           | 14.0 以上                                                                    |
+| macOS             | 推薦（Windows 穩定性較低）                                                   |
+| Xcode             | 15+                                                                          |
+| Python 3.13       | iOS 18.2+ TCP 模式必須                                                       |
+| pymobiledevice3   | 9.6 以上（建議透過 .venv 安裝）                                              |
+| iOS 裝置          | iOS 17 以上                                                                  |
+| Google Maps API Key | 選用；啟用 Maps JavaScript API 與 Places API（留空則使用免費 OpenStreetMap） |
 
-### iOS 裝置前置需求（iOS 17+）
-
-> iOS 支援需額外安裝工具，Android 使用者可跳過此段。
-
-| 項目              | 需求                                    |
-| ----------------- | --------------------------------------- |
-| macOS             | 推薦（Windows 穩定性較低）              |
-| Xcode             | 15+                                     |
-| Python 3.13       | iOS 18.2+ TCP 模式必須                  |
-| pymobiledevice3   | 9.6 以上（建議透過 .venv 安裝）         |
+### 前置安裝
 
 **macOS（推薦）：**
 
@@ -86,7 +79,7 @@
    .venv/bin/pip install "pymobiledevice3>=9.6"
    ```
 5. 手機透過 USB 連接，在 iPhone 點「信任」
-6. 執行 `npm start`，選擇 **2（iOS）**；支援 USB 及 WiFi 連線（WiFi 需先透過 USB 完成配對）
+6. 執行 `npm start`，啟動器會自動啟動 tunneld；支援 USB 及 WiFi 連線（WiFi 需先透過 USB 完成配對）
 
 **Windows（進階，穩定性較低）：**
 
@@ -98,7 +91,7 @@
    ```
 4. 安裝 [WireGuard for Windows](https://www.wireguard.com/install/)（包含 tunneld 所需的 WinTun 驅動）
 5. 以**系統管理員**身份開啟 PowerShell，手機連接 USB 並信任電腦
-6. 執行 `npm start`，選擇 **2（iOS）**，啟動器會自動啟動 tunnel 並開啟伺服器
+6. 執行 `npm start`，啟動器會自動啟動 tunnel 並開啟伺服器
 
 ---
 
@@ -148,71 +141,6 @@ Key 儲存於 localStorage，重新整理後自動套用。點「**清除**」�
 
 ---
 
-## 📱 Android 手機設定
-
-### 步驟一：啟用開發者選項
-
-1. 前往 **設定 → 關於手機**
-2. 連續點擊「**版本號碼**」7 次
-3. 回到設定，即可看到「**開發者選項**」
-
-### 步驟二：開啟 USB 偵錯
-
-進入「**開發者選項**」→ 開啟「**USB 偵錯**」
-
-### 步驟三：安裝 ADB
-
-**macOS（推薦）：**
-
-```bash
-brew install android-platform-tools
-```
-
-**Windows：**
-下載 [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools)，解壓縮後將目錄加入 PATH。
-
-**Linux（Ubuntu/Debian）：**
-
-```bash
-sudo apt install adb
-```
-
-**驗證安裝：**
-
-```bash
-adb version
-# Android Debug Bridge version x.x.x
-```
-
-### 步驟四：連接手機並安裝 Appium Settings
-
-透過 USB 連接手機，在電腦端執行：
-
-```bash
-# 確認裝置已連線
-adb devices
-# 應顯示：xxxxxxxxxxxx  device
-
-# 安裝 Appium Settings（已包含在專案根目錄）
-adb install appium-settings.apk
-```
-
-> **Appium Settings 說明：** 本 APK 來自開源專案 [Appium Settings](https://github.com/appium/io.appium.settings)，如需自行取得最新版，可前往該專案的 [Releases 頁面](https://github.com/appium/io.appium.settings/releases)下載。
-
-> **⚠️ 重要：授予位置權限**
-> 安裝後請**不要直接打開 Appium Settings**（App 介面會閃退，這是正常現象）。請改由手機設定授予權限：
-> 「**設定 → 應用程式 → Appium Settings → 權限 → 位置 → 一律允許**」
-
-### 步驟五：設定模擬位置應用程式
-
-1. 進入「**開發者選項**」
-2. 找到「**選取模擬位置應用程式**」
-3. 選擇 **Appium Settings**
-
-> **注意**：伺服器啟動後會自動偵測 Android SDK 版本，並在 Android 8+（API 26+）自動使用 `start-foreground-service`，無需手動修改設定。
-
----
-
 ## 📖 使用說明
 
 ### 位置設定（預覽確認流程）
@@ -220,7 +148,7 @@ adb install appium-settings.apk
 所有輸入方式皆採「預覽 → 確認」兩步驟：
 
 1. **搜尋地名**（輸入後按 Enter）、**點擊地圖**或**手動輸入座標** → 黃色預覽標記出現
-2. 確認位置後按「**✓ 改變定位**」→ 座標送出，紅色主標記移動
+2. 確認位置後按「**✓ 改變定位**」 → 座標送出，紅色主標記移動
 3. 按「**↩**」（圓形按鈕）可隨時將地圖視角拉回紅色標記位置
 
 ### GPS 鎖定（Keepalive）
@@ -258,17 +186,15 @@ adb install appium-settings.apk
     │  Nominatim（OpenStreetMap 地點搜尋）
     ▼
 Express 伺服器（Node.js）
-    │  child_process.exec
+    │  child_process.spawn
     │  GPS Keepalive（每 2 秒重送最後座標）
-    ├─────────────────────────────────────────────┐
-    ▼                                             ▼
-ADB (Android Debug Bridge)           pymobiledevice3 tunneld
-    │  am startservice /                  │  iOS DVT LocationSimulation
-    │  am start-foreground-service        │  USB 或 WiFi 連線
-    │  （依 Android 版本自動選擇）         ▼
-    ▼                               iOS 裝置
-Android 手機                            └─ ios_location_daemon.py（DVT）
-    └─ Appium Settings LocationService
+    ▼
+pymobiledevice3 tunneld
+    │  iOS DVT LocationSimulation
+    │  USB 或 WiFi 連線
+    ▼
+iOS 裝置
+    └─ ios_location_daemon.py（DVT）
 ```
 
 ### 播放隨機性（反偵測）
@@ -302,12 +228,6 @@ Android 手機                            └─ ios_location_daemon.py（DVT）
 **地圖無法顯示（ApiNotActivatedMapError）**
 → 請確認 Google Cloud Console 中已啟用「Maps JavaScript API」與「Places API」，並已設定帳單資訊。或清除 API Key 改用免費的 OpenStreetMap。
 
-**GPS 設定後手機位置沒有變化**
-→ 確認已在開發者選項中將「模擬位置應用程式」設定為 Appium Settings。
-
-**ADB 找不到裝置（no devices found）**
-→ 確認手機已開啟 USB 偵錯，USB 連接穩定，並已接受手機上的「允許 USB 偵錯」提示。
-
 **座標送出後一段時間 GPS 又漂回真實位置**
 → 確認側邊欄顯示「🔒 GPS 鎖定中」。若顯示「⏸ 未鎖定」，點「恢復鎖定」重新啟動 keepalive。
 
@@ -317,30 +237,27 @@ Android 手機                            └─ ios_location_daemon.py（DVT）
 **iOS 18.2+ QUIC 錯誤 / QuicProtocolNotSupportedError**
 → 需要 Python 3.13 並使用本專案的 .venv。執行 `brew install python@3.13`，再於專案目錄執行：
 ```bash
-python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
+python3.13 -m venv .venv
+.venv/bin/pip install "pymobiledevice3>=9.6"
 ```
 
-**iOS 裝置選擇區塊顯示「⚠ iOS 連線中斷（Channel is closed）」**
-→ DVT 通道因各種原因（手機鎖屏、WiFi 切換、系統逾時等）意外關閉。請重新啟動伺服器（Ctrl+C 後再執行 `npm start`），前端會自動重新偵測。
+**iOS 顯示「Channel is closed」**
+→ DVT 通道中斷，重啟伺服器即可（Ctrl+C → `npm start`）。
 
 ---
 
 ## 🛠️ 技術棧
 
-- **後端**：Node.js、Express 5
-- **前端**：Vanilla JavaScript、Google Maps JavaScript API / Leaflet.js + OpenStreetMap
-- **通訊**：ADB (Android Debug Bridge)
-- **Android**：Appium Settings LocationService
-- **iOS 驅動**：pymobiledevice3、DVT LocationSimulation
-- **UI 主題**：[Catppuccin Mocha](https://github.com/catppuccin/catppuccin)
+- **後端**：Node.js + Express 5
+- **iOS 連線**：pymobiledevice3 9.6+（DVT LocationSimulation + tunneld）
+- **前端**：原生 JavaScript + Leaflet.js / Google Maps JavaScript API
+- **地圖搜尋**：Nominatim（OpenStreetMap）/ Places Autocomplete（Google Maps）
 
 ---
 
 ## 📄 授權
 
-本專案採用 [MIT License](LICENSE) 授權。
-
----
+MIT License
 
 ---
 
@@ -349,101 +266,92 @@ python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
 ![Node.js](https://img.shields.io/badge/Node.js-14%2B-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
 ![iOS](https://img.shields.io/badge/iOS-17%2B-000000?logo=apple&logoColor=white)
 
-A local web-based tool built with Node.js that sends fake GPS coordinates to an Android device via ADB and Appium Settings. Supports both Google Maps (API Key required) and OpenStreetMap (free, no key needed), with route planning, GPS keepalive, and favorites management.
+A local Node.js web tool that uses pymobiledevice3 DVT LocationSimulation to send fake GPS coordinates to iOS devices. Supports Google Maps (requires API key) or OpenStreetMap (free, no key required), route planning playback, GPS keepalive, and favorites management.
 
-> **⚠️ Disclaimer**: This tool is intended for personal development and testing only. Using fake GPS in games or apps may violate their Terms of Service. Use at your own risk.
+> **⚠️ Disclaimer:** This tool is for personal development and testing only. Using fake GPS in games or apps may violate their terms of service — use at your own risk.
 
 ---
 
 ## 💖 Support
 
-If this tool has been helpful, feel free to buy me a coffee ☕
+If this tool helped you, consider buying me a coffee ☕
 
 <a href='https://ko-fi.com/I3I41GR33G' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-&nbsp;&nbsp;
-<a href='https://core.newebpay.com/EPG/comment_helper/t9gZwO' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://www.newebpay.com/ud/img/logo_sm2.png' border='0' alt='Donate via NewebPay' /></a>
 
 ---
 
 ## 📚 Documentation
 
-| Document                                              | Best for                                            |
-| ----------------------------------------------------- | --------------------------------------------------- |
-| **This page (README)**                                | Feature overview & technical reference              |
-| [⚡ Quick Install (quickinstall.md)](quickinstall.md) | Developers familiar with CLI — get running fast     |
-| [📖 Full Beginner Guide (tutor.md)](tutor.md)         | Users with no programming experience — zero to done |
+| Document                                          | Audience                                   |
+| ------------------------------------------------- | ------------------------------------------ |
+| **This page (README)**                            | Feature overview and technical reference   |
+| [⚡ Quick Install (quickinstall.md)](quickinstall.md) | Developers familiar with CLI               |
+| [📖 Beginner Tutorial (tutor.md)](tutor.md)       | Users without programming experience       |
 
 ---
 
 ## ✨ Features
 
-- 🗺️ **Dual Map System** — Enter a Google Maps API Key to use Google Maps; leave blank to automatically use OpenStreetMap (completely free)
-- 🔍 **Place Search** — Google Places Autocomplete in Google Maps mode; Nominatim in OpenStreetMap mode
-- 👁️ **Preview-First Flow** — Search, map click, or manual input all show a yellow preview marker first; click "✓ Confirm Location" to actually send
-- ↩ **Quick Return** — Circular button to instantly pan the map view back to the current confirmed GPS position
-- 🔒 **GPS Keepalive** — After sending coordinates, the server automatically resends them every 2 seconds to prevent GPS drift back to real location
-- 🛤️ **Route Planning** — Starts from your current position; only 1 waypoint needed; adjustable speed (1–50 km/h)
-- 📂 **GPX Import** — Load a GPX file to auto-populate waypoints; automatically samples to 300 points if needed; first point is sent immediately on load
-- 🎲 **Anti-Detection Randomness** — Speed variance ±25%, GPS jitter ±2m, interval variance ±20% during playback
-- ⭐ **Favorite Locations & Routes** — Save frequently used locations and routes for one-click loading
-- 📜 **Location History** — Automatically records the last 10 confirmed positions; click to load as preview
-- 💾 **State Persistence** — All settings automatically saved to localStorage and restored on page reload
-- 📶 **iOS WiFi Connection** — After the initial USB pairing, subsequent connections can be made over WiFi without a cable
-- 📡 **Auto Device Detection** — Automatically detects all Android / iOS devices and presents them in a dropdown; while connecting, the frontend retries every 3 seconds (up to 60 seconds) and displays the connection type (USB / WiFi) and DVT status
-- ⚠️ **iOS Error Notification** — When the DVT channel drops unexpectedly (Channel is closed), a red error message appears in the device selector, prompting a server restart
+- 🗺️ **Dual map system** — Use Google Maps with an API key, or fall back to free OpenStreetMap
+- 🔍 **Location search** — Places Autocomplete (Google Maps) / Nominatim (OpenStreetMap)
+- 👁️ **Preview-then-confirm flow** — Search, click, or type coords first show a yellow preview marker; click "✓ Confirm" to actually send
+- ↩ **Quick recenter** — Round button to recenter the map on the last confirmed GPS position
+- 🔒 **GPS Keepalive** — Server resends the latest coordinate every 2 seconds to prevent drift
+- 🛤️ **Route planning** — Set 1+ waypoints and play; speed adjustable (1–50 km/h)
+- 📂 **GPX loading** — Load GPX files to auto-populate waypoints (down-sampled to 300 points if larger); first point is sent immediately
+- 🎲 **Anti-detection randomness** — Speed jitter ±25%, GPS jitter ±2m, interval jitter ±20%
+- ⭐ **Favorites** — Save locations and routes for quick recall
+- 📜 **History** — Last 10 confirmed positions, click to load as preview
+- 💾 **Persistence** — All settings saved to localStorage
+- 📶 **iOS WiFi connection** — After initial USB pairing, connect over WiFi without a cable
+- 📡 **Auto device detection** — All iOS devices auto-detected; sidebar retries up to 60 sec; shows USB/WiFi and DVT status
+- ⚠️ **iOS error feedback** — Shows red banner when DVT channel drops, prompting server restart
 
 ---
 
 ## Requirements
 
-| Item                       | Requirement                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------- |
-| Node.js                    | 14.0 or higher                                                                     |
-| ADB (Android Debug Bridge) | Any version                                                                        |
-| Android device             | Android 8.0+ (10+ recommended)                                                     |
-| Google Maps API Key        | Optional; Maps JavaScript API + Places API (leave blank to use free OpenStreetMap) |
+| Item                  | Requirement                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| Node.js               | 14.0+                                                        |
+| macOS                 | Recommended (Windows is less stable)                         |
+| Xcode                 | 15+                                                          |
+| Python 3.13           | Required for iOS 18.2+ TCP mode                              |
+| pymobiledevice3       | 9.6+ (recommended via .venv)                                 |
+| iOS device            | iOS 17+                                                      |
+| Google Maps API Key   | Optional; enable Maps JavaScript API and Places API          |
 
-### iOS Device Prerequisites (iOS 17+)
-
-> iOS support requires additional tools. Android users can skip this section.
-
-| Item              | Requirement                                        |
-| ----------------- | -------------------------------------------------- |
-| macOS             | Recommended (Windows is less stable)               |
-| Xcode             | 15+                                                |
-| Python 3.13       | Required for iOS 18.2+ TCP mode                    |
-| pymobiledevice3   | 9.6 or higher (recommended to install via .venv)   |
+### One-time setup
 
 **macOS (recommended):**
 
-1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
-2. Install Xcode 15+ on Mac (pymobiledevice3 depends on its underlying frameworks)
+1. Enable Developer Mode on phone: `Settings → Privacy & Security → Developer Mode`
+2. Install Xcode 15+ from App Store (pymobiledevice3 depends on its frameworks)
 3. Install Python 3.13 (required for iOS 18.2+):
    ```bash
    brew install python@3.13
    ```
-4. Create a venv in the project directory and install pymobiledevice3:
+4. Create venv and install pymobiledevice3 in the project directory:
    ```bash
    python3.13 -m venv .venv
    .venv/bin/pip install "pymobiledevice3>=9.6"
    ```
-5. Connect the device via USB and tap "Trust" on the iPhone
-6. Run `npm start`, select **2 (iOS)**; supports both USB and WiFi connections (WiFi requires initial USB pairing)
+5. Connect iPhone via USB and tap "Trust"
+6. Run `npm start` — the launcher auto-starts tunneld. Supports both USB and WiFi (WiFi requires initial USB pairing)
 
 **Windows (advanced, less stable):**
 
-1. Enable Developer Mode on the device: `Settings → Privacy & Security → Developer Mode`
-2. Install Python 3 from [python.org](https://www.python.org) — check "Add Python to PATH" during setup
-3. Install pymobiledevice3 (9.6 or higher required):
+1. Enable Developer Mode on phone
+2. Install Python 3 from [python.org](https://www.python.org) (check "Add Python to PATH")
+3. Install pymobiledevice3 (9.6+ required):
    ```powershell
    pip install "pymobiledevice3>=9.6"
    ```
-4. Install [WireGuard for Windows](https://www.wireguard.com/install/) (includes the WinTun driver required by tunneld)
-5. Open PowerShell **as Administrator**, connect device via USB and trust the computer
-6. Run `npm start`, select **2 (iOS)** — the launcher automatically starts the tunnel and opens the server
+4. Install [WireGuard for Windows](https://www.wireguard.com/install/) (provides the WinTun driver tunneld needs)
+5. Open PowerShell as **Administrator**, connect iPhone via USB and trust
+6. Run `npm start` — the launcher auto-starts tunnel and the server
 
 ---
 
@@ -470,91 +378,26 @@ npm start
 
 ### 4. Open in browser
 
-Navigate to [http://localhost:3000](http://localhost:3000)
+Visit [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## 🗺️ Google Maps API Key (Optional)
 
-After opening the app, you'll find a **Google Maps API Key** input at the top of the sidebar:
+The "**Google Maps API Key**" input is at the top of the sidebar:
 
-- **Leave blank**: Uses OpenStreetMap (free, no account needed)
-- **Enter a key**: Switches to Google Maps with Places Autocomplete
+- **Empty**: Uses OpenStreetMap (free, no account)
+- **With key**: Switches to Google Maps with Places Autocomplete
 
-> **How to get an API Key:**
+> **How to get an API key:**
 >
-> 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+> 1. Visit [Google Cloud Console](https://console.cloud.google.com/)
 > 2. Create or select a project
 > 3. Enable **Maps JavaScript API** and **Places API**
-> 4. Go to **Credentials** → **Create Credentials** → **API Key**
-> 5. Recommended: restrict the key to `http://localhost:3000/*`
+> 4. Credentials → Create credentials → API key
+> 5. (Recommended) restrict to `http://localhost:3000/*`
 
-The key is saved to localStorage and automatically applied on reload. Click **Clear** to switch back to OpenStreetMap at any time.
-
----
-
-## 📱 Android Device Setup
-
-### Step 1: Enable Developer Options
-
-1. Go to **Settings → About phone**
-2. Tap **Build number** 7 times
-3. Developer Options will appear in the Settings menu
-
-### Step 2: Enable USB Debugging
-
-Go to **Developer Options** → Enable **USB Debugging**
-
-### Step 3: Install ADB
-
-**macOS (recommended):**
-
-```bash
-brew install android-platform-tools
-```
-
-**Windows:**
-Download [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools), extract, and add the directory to your PATH.
-
-**Linux (Ubuntu/Debian):**
-
-```bash
-sudo apt install adb
-```
-
-**Verify installation:**
-
-```bash
-adb version
-# Android Debug Bridge version x.x.x
-```
-
-### Step 4: Connect device and install Appium Settings
-
-Connect your phone via USB, then run on your computer:
-
-```bash
-# Verify the device is recognized
-adb devices
-# Should show: xxxxxxxxxxxx  device
-
-# Install Appium Settings (included in project root)
-adb install appium-settings.apk
-```
-
-> **About Appium Settings:** This APK is from the open-source project [Appium Settings](https://github.com/appium/io.appium.settings). To get the latest version yourself, visit its [Releases page](https://github.com/appium/io.appium.settings/releases).
-
-> **⚠️ Important: Grant location permission**
-> Do **not** open the Appium Settings app directly — its UI will keep crashing, which is expected behavior. Instead, grant permission through your phone's settings:
-> **Settings → Apps → Appium Settings → Permissions → Location → Allow all the time**
-
-### Step 5: Set mock location app
-
-1. Open **Developer Options**
-2. Find **Select mock location app**
-3. Select **Appium Settings**
-
-> **Note**: The server automatically detects your Android SDK version and uses `start-foreground-service` on Android 8+ (API 26+). No manual configuration needed.
+The key is stored in localStorage and applied on reload. Click "**Clear**" to switch back to OpenStreetMap anytime.
 
 ---
 
@@ -562,34 +405,34 @@ adb install appium-settings.apk
 
 ### Setting a Location (Preview Flow)
 
-All input methods use a two-step preview → confirm workflow:
+All input methods follow a "preview → confirm" two-step:
 
-1. **Search a place** (type + Enter), **click the map**, or **enter coordinates manually** → Yellow preview marker appears
-2. Confirm the position by clicking **✓ Confirm Location** → Coordinates are sent, red marker moves
-3. Click the **↩** circular button anytime to pan the map view back to the red confirmed marker
+1. **Search**, **click on map**, or **type coords** → yellow preview marker appears
+2. Verify, then click "**✓ Confirm Location**" → coords sent, red main marker moves
+3. Click "**↩**" anytime to recenter on the red marker
 
 ### GPS Keepalive
 
-After sending coordinates, the server automatically resends them every 2 seconds to prevent GPS drift.
+After sending coords, the server resends them every 2 seconds to prevent the phone GPS from drifting back.
 
 - Sidebar shows **🔒 GPS Locked** when active
-- Click **Pause Lock** to stop resending; click **Resume Lock** to restart
+- Click "**Pause Lock**" to stop, "**Resume Lock**" to restart
 
 ### Route Planning & Playback
 
-1. Click **Enable Waypoint Mode** and click on the map to add waypoints (**minimum 1** — the route starts from your current confirmed position)
-   - Or click **📂 Load GPX** to select a GPX file; waypoints are auto-populated and the first point is sent immediately
-2. Adjust the speed slider (1–50 km/h)
-3. Click **▶ Start Playback** — a blue route line and moving marker will appear
-4. Click **■ Stop** to cancel at any time
+1. Click "**Enable Waypoint Mode**" and tap on map to add waypoints (**1+ minimum**, route starts from current confirmed location)
+   - Or click "**📂 Load GPX**" to load a GPX file (auto-populates all waypoints and sends the first one)
+2. Adjust speed slider (1–50 km/h)
+3. Click "**▶ Start Playback**" — blue line and moving marker appear
+4. Click "**■ Stop**" anytime
 
-> If the first waypoint is more than **20 km** from your current position, a confirmation dialog will appear before playback starts.
+> If the first waypoint is more than 20 km away, a confirmation dialog appears.
 
 ### Favorites & History
 
-- **Favorite locations**: Click **★ Add to Favorites** to save the current coordinates; click 📍 to load as preview
-- **Favorite routes**: After setting up waypoints, click **★ Save Route**; click ▶ to load instantly
-- **History**: Every confirmed location is automatically recorded (up to 10 entries); click 📍 to load as preview
+- **Favorite Locations**: "**★ Add to Favorites**" saves current coords; "📍" loads as preview
+- **Favorite Routes**: After setting waypoints, "**★ Save Route**"; "▶" reloads
+- **History**: Auto-records last 10 confirmed locations; "📍" reloads as preview
 
 ---
 
@@ -598,89 +441,81 @@ After sending coordinates, the server automatically resends them every 2 seconds
 ### Architecture
 
 ```
-Browser (Frontend)
-    │  Google Maps JavaScript API / Leaflet.js + OpenStreetMap
-    │  Nominatim (OpenStreetMap place search)
+Browser (frontend)
+    │  Google Maps JS API / Leaflet.js + OpenStreetMap
+    │  Nominatim (OpenStreetMap geocoding)
     ▼
-Express Server (Node.js)
-    │  child_process.exec
-    │  GPS Keepalive (resends last coordinates every 2s)
-    ├─────────────────────────────────────────────┐
-    ▼                                             ▼
-ADB (Android Debug Bridge)           pymobiledevice3 tunneld
-    │  am startservice /                  │  iOS DVT LocationSimulation
-    │  am start-foreground-service        │  USB or WiFi connection
-    │  (auto-selected by Android ver.)    ▼
-    ▼                               iOS Device
-Android Device                          └─ ios_location_daemon.py (DVT)
-    └─ Appium Settings LocationService
+Express server (Node.js)
+    │  child_process.spawn
+    │  GPS Keepalive (resends last coord every 2 s)
+    ▼
+pymobiledevice3 tunneld
+    │  iOS DVT LocationSimulation
+    │  USB or WiFi
+    ▼
+iOS device
+    └─ ios_location_daemon.py (DVT)
 ```
 
 ### Anti-Detection Randomness
 
-| Mechanism              | Value     |
-| ---------------------- | --------- |
-| Speed variance         | ±25%      |
-| GPS jitter             | ±2 meters |
-| Tick interval variance | ±20%      |
-| Base update frequency  | 500ms     |
+| Mechanism        | Value     |
+| ---------------- | --------- |
+| Speed jitter     | ±25%      |
+| GPS jitter       | ±2 meters |
+| Tick interval    | ±20%      |
+| Base update rate | 500 ms    |
 
-Uses recursive `setTimeout` (not `setInterval`) for variable-interval updates, simulating the irregular nature of real walking.
+Uses recursive `setTimeout` (not `setInterval`) for irregular intervals — mimics real walking.
 
 ### localStorage Schema
 
-| Key                           | Contents                            |
-| ----------------------------- | ----------------------------------- |
-| `fakegps_lat` / `fakegps_lng` | Last confirmed coordinates          |
-| `fakegps_zoom`                | Map zoom level                      |
-| `fakegps_speed`               | Speed (km/h)                        |
-| `fakegps_waypoints`           | Waypoints array                     |
-| `fakegps_fav_locations`       | Saved favorite locations            |
-| `fakegps_fav_routes`          | Saved favorite routes               |
-| `fakegps_history`             | Location history (up to 10 entries) |
-| `fakegps_gmaps_key`           | Google Maps API Key                 |
+| Key                           | Content                |
+| ----------------------------- | ---------------------- |
+| `fakegps_lat` / `fakegps_lng` | Last confirmed coords  |
+| `fakegps_zoom`                | Map zoom level         |
+| `fakegps_speed`               | Speed (km/h)           |
+| `fakegps_waypoints`           | Waypoint array         |
+| `fakegps_fav_locations`       | Favorite locations     |
+| `fakegps_fav_routes`          | Favorite routes        |
+| `fakegps_history`             | Location history (10)  |
+| `fakegps_gmaps_key`           | Google Maps API key    |
 
 ---
 
 ## ❓ FAQ
 
-**Map doesn't load (ApiNotActivatedMapError)**
-→ Make sure both **Maps JavaScript API** and **Places API** are enabled in Google Cloud Console with billing configured. Or clear the API Key to switch to the free OpenStreetMap.
+**Map not loading (ApiNotActivatedMapError)**
+→ Confirm "Maps JavaScript API" and "Places API" are enabled in Google Cloud Console and billing is set up. Or clear the API key to use the free OpenStreetMap.
 
-**GPS doesn't update after setting coordinates**
-→ Confirm that **Appium Settings** is selected as the mock location app in Developer Options.
+**GPS drifts back after a while**
+→ Check sidebar shows "🔒 GPS Locked". If "⏸ Unlocked", click "Resume Lock" to restart keepalive.
 
-**ADB can't find the device (no devices found)**
-→ Verify USB Debugging is enabled, the USB connection is stable, and you've accepted the "Allow USB Debugging" prompt on your phone.
-
-**GPS drifts back to real location after a while**
-→ Check that the sidebar shows **🔒 GPS Locked**. If it shows **⏸ Unlocked**, click **Resume Lock** to restart the keepalive.
-
-**iOS device shows "Waiting for device connection…" for more than 60 seconds**
-→ Confirm the iPhone and Mac are on the same WiFi network, or switch to USB; after tunneld starts it may take 15–30 seconds to detect the device, and the frontend will retry automatically.
+**iOS device shows "Waiting for device…" for over 60 seconds**
+→ Confirm iPhone and Mac are on the same WiFi, or use USB; tunneld takes ~15–30 sec for initial scan, frontend auto-retries.
 
 **iOS 18.2+ QUIC error / QuicProtocolNotSupportedError**
-→ Python 3.13 and this project's .venv are required. Run `brew install python@3.13`, then in the project directory:
+→ Python 3.13 + project .venv required:
 ```bash
-python3.13 -m venv .venv && .venv/bin/pip install "pymobiledevice3>=9.6"
+brew install python@3.13
+python3.13 -m venv .venv
+.venv/bin/pip install "pymobiledevice3>=9.6"
 ```
 
-**Device selector shows "⚠ iOS 連線中斷（Channel is closed）"**
-→ The DVT channel closed unexpectedly (screen lock, WiFi switch, system timeout, etc.). Restart the server (Ctrl+C then `npm start`) — the frontend will re-detect automatically.
+**iOS shows "Channel is closed"**
+→ DVT channel dropped; restart the server (Ctrl+C → `npm start`).
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Node.js, Express 5
-- **Frontend**: Vanilla JavaScript, Google Maps JavaScript API / Leaflet.js + OpenStreetMap
-- **Communication**: ADB (Android Debug Bridge)
-- **Android**: Appium Settings LocationService
-- **iOS Driver**: pymobiledevice3, DVT LocationSimulation
-- **UI Theme**: [Catppuccin Mocha](https://github.com/catppuccin/catppuccin)
+- **Backend:** Node.js + Express 5
+- **iOS connectivity:** pymobiledevice3 9.6+ (DVT LocationSimulation + tunneld)
+- **Frontend:** Vanilla JavaScript + Leaflet.js / Google Maps JS API
+- **Geocoding:** Nominatim (OpenStreetMap) / Places Autocomplete (Google Maps)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT License
