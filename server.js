@@ -50,30 +50,39 @@ function startIosDaemon() {
   iosProcess = spawn(VENV_PYTHON, [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
   iosDaemonReady = false;
 
-  iosProcess.stdout.on('data', (data) => {
+  // 捕捉當前 process 的本地 ref；stopIosDaemon 會把模組層 iosProcess 設為 null，
+  // 之後仍可能 in-flight 收到的事件透過此 ref 識別並忽略。
+  const proc = iosProcess;
+
+  proc.stdout.on('data', (data) => {
+    if (iosProcess !== proc) return; // 已被 stopIosDaemon 停掉，忽略殘留事件
     const msg = data.toString().trim();
     if (msg.includes('READY')) iosDaemonReady = true;
   });
-  iosProcess.stderr.on('data', (data) => {
+  proc.stderr.on('data', (data) => {
     const msg = data.toString().trim();
     console.error('[ios-daemon]', msg);
+    if (iosProcess !== proc) return; // 已停止：寫 stderr log 但不影響狀態
     // 偵測已知嚴重錯誤，通知前端需重啟伺服器
     if (msg.includes('Channel is closed') || msg.includes('設定位置失敗')) {
       iosDaemonError = 'channel_closed';
       iosDaemonReady = false;
     }
   });
-  iosProcess.on('close', () => {
-    iosProcess = null;
-    iosDaemonReady = false;
+  proc.on('close', () => {
+    if (iosProcess === proc) {
+      iosProcess = null;
+      iosDaemonReady = false;
+    }
   });
 }
 
 // 停止 iOS DVT 常駐程式
 function stopIosDaemon() {
   if (iosProcess) {
-    iosProcess.kill('SIGTERM');
-    iosProcess = null;
+    const proc = iosProcess;
+    iosProcess = null;        // 先清模組層 ref，後續 in-flight 事件可藉此識別
+    proc.kill('SIGTERM');
   }
   iosDaemonReady = false;
   iosDaemonError = null;
