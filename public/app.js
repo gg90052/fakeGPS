@@ -10,7 +10,7 @@ let routePollingTimer = null;
 let routePolyline = null;
 let previewMarker = null; // 最愛地點載入時的黃色預覽 marker
 let keepalivePollingTimer = null;
-let confirmedPos = null; // 最後一次送出 ADB 的座標（↩ 按鈕用）
+let confirmedPos = null; // 最後一次確認送出的座標（↩ 按鈕用）
 
 // =============================================
 // localStorage 狀態持久化
@@ -248,7 +248,7 @@ async function sendLocation(lat, lng) {
 }
 
 // =============================================
-// 預覽 Marker（最愛地點載入用，黃色，不送 ADB）
+// 預覽 Marker（最愛地點載入用，黃色，不送出座標）
 // =============================================
 function clearPreviewMarker() {
   if (previewMarker) {
@@ -282,9 +282,9 @@ function setPreviewLocation(lat, lng) {
 }
 
 // =============================================
-// 更新輸入框、地圖 pin，並（可選）送出 ADB 指令
+// 更新輸入框、地圖 pin，並（可選）送出座標到伺服器
 // =============================================
-function setLocation(lat, lng, sendAdb = true) {
+function setLocation(lat, lng, send = true) {
   clearPreviewMarker();
   setCoordInput(lat, lng);
   if (marker) {
@@ -293,7 +293,7 @@ function setLocation(lat, lng, sendAdb = true) {
     marker = mapProvider.createMainMarker(lat, lng);
   }
   mapProvider.panTo(lat, lng);
-  if (sendAdb) {
+  if (send) {
     sendLocation(lat, lng);
     confirmedPos = { lat, lng };
     updateBackButton();
@@ -653,7 +653,7 @@ function loadGpxFile(file) {
 // 控制面板互動設定
 // =============================================
 function setupControls() {
-  // input-coord Enter → 預覽（不送 ADB）
+  // input-coord Enter → 預覽（不送出座標）
   document.getElementById('input-coord').addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     const coord = parseCoordInput();
@@ -661,7 +661,7 @@ function setupControls() {
     setPreviewLocation(coord.lat, coord.lng);
   });
 
-  // ✓ 改變定位 → 確認送 ADB + 加入歷史
+  // ✓ 改變定位 → 確認送出座標 + 加入歷史
   document.getElementById('btn-confirm-location').addEventListener('click', () => {
     const coord = parseCoordInput();
     if (!coord) return showStatus('請輸入有效座標（格式：緯度, 經度）', true);
@@ -669,7 +669,7 @@ function setupControls() {
     pushLocationHistory(coord.lat, coord.lng);
   });
 
-  // ↩ 回到目前定位 → 將地圖視角移回最後一次確認的位置（不重送 ADB）
+  // ↩ 回到目前定位 → 將地圖視角移回最後一次確認的位置（不重送座標）
   document.getElementById('btn-back-location').addEventListener('click', () => {
     if (!confirmedPos) return;
     mapProvider.panTo(confirmedPos.lat, confirmedPos.lng);
