@@ -303,6 +303,9 @@ app.post('/api/route/start', (req, res) => {
   if (typeof speed_kmh !== 'number' || speed_kmh <= 0) {
     return res.json({ success: false, error: '速度必須為正數' });
   }
+  if (!iosProcess || !iosDaemonReady) {
+    return res.json({ success: false, error: '尚未連接裝置' });
+  }
 
   stopKeepalive();
   if (routeTimer) { clearTimeout(routeTimer); routeTimer = null; }
