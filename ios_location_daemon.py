@@ -5,6 +5,11 @@ iOS GPS 位置模擬常駐程式
 透過 DVT LocationSimulation 維持持久連線，從 stdin 讀取 lat,lng 更新位置。
 server.js 以 spawn 方式啟動此程式，透過 stdin 管線發送座標。
 
+用法：
+  ios_location_daemon.py [UDID]
+  - 若提供 UDID，僅綁定該 UDID 的裝置；找不到則錯誤退出
+  - 不提供時，使用 tunneld 回傳的第一台裝置（向後相容）
+
 stdin 格式：每行 "lat,lng"，例如 "25.0330,121.5654"
 stdout：啟動成功後輸出 "READY\n"，每次設定成功輸出 "OK\n"
 stderr：錯誤訊息
@@ -19,10 +24,16 @@ import logging
 logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
 
 
+def _device_udid(d) -> str:
+    return getattr(d, "udid", None) or getattr(d, "UniqueDeviceID", None) or ""
+
+
 async def main() -> None:
     from pymobiledevice3.tunneld.api import get_tunneld_devices
     from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
     from pymobiledevice3.services.dvt.instruments.location_simulation import LocationSimulation
+
+    udid_filter = sys.argv[1] if len(sys.argv) > 1 else None
 
     # 透過 tunneld 取得裝置
     try:
@@ -35,7 +46,14 @@ async def main() -> None:
         print("ERROR: tunneld 找不到裝置，請確認 tunneld 已啟動", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    device = devices[0]
+    if udid_filter:
+        matches = [d for d in devices if _device_udid(d) == udid_filter]
+        if not matches:
+            print(f"ERROR: 找不到 UDID 為 {udid_filter} 的裝置", file=sys.stderr, flush=True)
+            sys.exit(1)
+        device = matches[0]
+    else:
+        device = devices[0]
 
     try:
         dvt = DvtProvider(device)

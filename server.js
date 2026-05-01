@@ -42,12 +42,19 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// 啟動 iOS DVT 常駐程式
-function startIosDaemon() {
+// 從前端的 device.id 還原為 daemon 用的 UDID（WiFi 模式 id 是 "${udid}-wifi"）
+function deviceIdToUdid(id) {
+  if (!id) return null;
+  return id.replace(/-wifi$/, '');
+}
+
+// 啟動 iOS DVT 常駐程式（可選 udid：精確綁定到該裝置）
+function startIosDaemon(udid) {
   stopIosDaemon();
   iosDaemonError = null;
   const daemonPath = path.join(__dirname, 'ios_location_daemon.py');
-  iosProcess = spawn(VENV_PYTHON, [daemonPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const args = udid ? [daemonPath, udid] : [daemonPath];
+  iosProcess = spawn(VENV_PYTHON, args, { stdio: ['pipe', 'pipe', 'pipe'] });
   iosDaemonReady = false;
 
   // 捕捉當前 process 的本地 ref；stopIosDaemon 會把模組層 iosProcess 設為 null，
@@ -88,10 +95,11 @@ function stopIosDaemon() {
   iosDaemonError = null;
 }
 
-// 啟動指定裝置（iOS-only：直接確保 daemon 在執行）
+// 啟動指定裝置：若已選同一裝置則 no-op；切換到不同裝置時重啟 daemon
 function activateDevice(device) {
+  if (selectedDeviceId === device.id && iosProcess) return;
   selectedDeviceId = device.id;
-  if (!iosProcess) startIosDaemon();
+  startIosDaemon(deviceIdToUdid(device.id));
 }
 
 // 執行送座標（iOS daemon stdin）
