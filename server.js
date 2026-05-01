@@ -16,16 +16,9 @@ let routeCurrentPos = null; // { lat, lng } 播放中的當前座標
 let routePaused = false;    // 是否暫停中
 let _routeState = null;     // 暫停 / 恢復時保存的播放細節
 
-// Android 版本自動偵測：Android 8+（API 26+）需使用 start-foreground-service
-let useForegroundService = false;
-
-// 所有已偵測到的裝置清單
-let detectedDevices = [];  // [{ id, name, platform, connection?, androidSerial?, androidSdk? }]
+// 所有已偵測到的 iOS 裝置清單
+let detectedDevices = [];  // [{ id, name, connection: 'usb' | 'wifi' }]
 let selectedDeviceId = null;
-let currentAndroidSerial = null;
-
-// 裝置驅動類型：'android' | 'ios' | null
-let currentDriver = null;
 
 // iOS DVT 常駐程式（ios_location_daemon.py 子進程）
 let iosProcess = null;
@@ -73,7 +66,6 @@ function startIosDaemon() {
   iosProcess.on('close', () => {
     iosProcess = null;
     iosDaemonReady = false;
-    if (currentDriver === 'ios') currentDriver = null;
   });
 }
 
@@ -87,33 +79,16 @@ function stopIosDaemon() {
   iosDaemonError = null;
 }
 
-// 啟動指定裝置（設定 currentDriver 與相關狀態）
+// 啟動指定裝置（iOS-only：直接確保 daemon 在執行）
 function activateDevice(device) {
   selectedDeviceId = device.id;
-  if (device.platform === 'android') {
-    currentDriver = 'android';
-    currentAndroidSerial = device.androidSerial || null;
-    useForegroundService = device.androidSdk != null && device.androidSdk >= 26;
-    stopIosDaemon();
-  } else if (device.platform === 'ios') {
-    currentDriver = 'ios';
-    currentAndroidSerial = null;
-    if (!iosProcess) startIosDaemon();
-  }
+  if (!iosProcess) startIosDaemon();
 }
 
-// 執行送座標（根據裝置類型選擇驅動）
+// 執行送座標（iOS daemon stdin）
 function sendLocation(lat, lng) {
   if (!isFinite(lat) || !isFinite(lng)) return;
-  if (currentDriver === 'android') {
-    const svcCmd = useForegroundService ? 'start-foreground-service' : 'startservice';
-    // 若有指定序號則加上 -s 參數（多台 Android 裝置支援）
-    const serialFlag = currentAndroidSerial ? `-s "${currentAndroidSerial}" ` : '';
-    const cmd = `adb ${serialFlag}shell am ${svcCmd} -n io.appium.settings/.LocationService --es longitude "${lng}" --es latitude "${lat}"`;
-    // 刻意 fire-and-forget：指令失敗時由 keepalive 機制定時重試
-    exec(cmd, () => {});
-  } else if (currentDriver === 'ios' && iosProcess && iosDaemonReady) {
-    // 透過 stdin 管線傳送座標給持久 DVT daemon
+  if (iosProcess && iosDaemonReady) {
     iosProcess.stdin.write(`${lat},${lng}\n`);
   }
 }
@@ -149,93 +124,58 @@ function addGpsJitter(lat, lng, maxMeters) {
 
 // 取得目前已選裝置資訊（精簡版，供相容用）
 app.get('/api/device', (req, res) => {
-  if (!selectedDeviceId) return res.json({ device: null, platform: null });
+  if (!selectedDeviceId) return res.json({ device: null });
   const d = detectedDevices.find(x => x.id === selectedDeviceId);
-  if (!d) return res.json({ device: null, platform: null });
-  res.json({ device: d.name, platform: d.platform, connection: d.connection ?? null });
+  if (!d) return res.json({ device: null });
+  res.json({ device: d.name, connection: d.connection ?? null });
 });
 
-// 偵測所有可用裝置（Android + iOS USB + iOS WiFi）
+// 偵測所有可用 iOS 裝置（USB + WiFi）
 app.get('/api/devices', (req, res) => {
   const result = [];
 
-  exec('adb devices', (adbErr, adbOut) => {
-    const androidLines = adbErr ? [] :
-      adbOut.split('\n')
-        .filter(l => l.trim() && !l.startsWith('List of devices'))
-        .filter(l => l.includes('\tdevice'));
-
-    let androidPending = androidLines.length;
-
-    function finishAndroid() {
-      // 偵測 iOS USB
-      exec(`"${VENV_PMD3}" usbmux list`, (usbErr, usbOut) => {
-        let usbDevices = [];
-        if (!usbErr && usbOut?.trim() && usbOut.trim() !== '[]') {
-          try { usbDevices = JSON.parse(usbOut); } catch {}
-        }
-        usbDevices.forEach(d => {
-          const udid = d.UniqueDeviceID || d.udid || '';
-          if (!udid || result.find(x => x.id === udid)) return;
-          result.push({ id: udid, name: d.DeviceName || 'iOS Device', platform: 'ios', connection: 'usb' });
-        });
-
-        // 偵測 iOS WiFi（透過 tunneld）
-        const listPath = path.join(__dirname, 'ios_list_devices.py');
-        exec(`"${VENV_PYTHON}" "${listPath}"`, (wifiErr, wifiOut) => {
-          if (!wifiErr && wifiOut?.trim() && wifiOut.trim() !== '[]') {
-            try {
-              const wifiDevices = JSON.parse(wifiOut);
-              wifiDevices.forEach(d => {
-                const udid = d.UniqueDeviceID || '';
-                // 若已以 USB 列出則跳過
-                if (udid && result.find(x => x.id === udid)) return;
-                const wifiId = udid ? `${udid}-wifi` : `ios-wifi-${Date.now()}`;
-                result.push({ id: wifiId, name: d.DeviceName || 'iOS Device', platform: 'ios', connection: 'wifi' });
-              });
-            } catch {}
-          }
-
-          detectedDevices = result;
-
-          // 只有一台裝置且尚未選擇時自動啟動
-          if (result.length === 1 && !selectedDeviceId) {
-            activateDevice(result[0]);
-          }
-          // 若已選裝置已消失，清除狀態
-          if (selectedDeviceId && !result.find(d => d.id === selectedDeviceId)) {
-            selectedDeviceId = null;
-            currentDriver = null;
-            currentAndroidSerial = null;
-            stopKeepalive();
-            stopIosDaemon();
-          }
-
-          res.json({ devices: result, selectedId: selectedDeviceId });
-        });
-      });
+  // 偵測 iOS USB
+  exec(`"${VENV_PMD3}" usbmux list`, (usbErr, usbOut) => {
+    let usbDevices = [];
+    if (!usbErr && usbOut?.trim() && usbOut.trim() !== '[]') {
+      try { usbDevices = JSON.parse(usbOut); } catch {}
     }
+    usbDevices.forEach(d => {
+      const udid = d.UniqueDeviceID || d.udid || '';
+      if (!udid || result.find(x => x.id === udid)) return;
+      result.push({ id: udid, name: d.DeviceName || 'iOS Device', connection: 'usb' });
+    });
 
-    if (androidPending === 0) { finishAndroid(); return; }
-
-    androidLines.forEach(line => {
-      const serial = line.split('\t')[0].trim();
-      // 取型號名稱（使用者易讀）與 SDK 版本
-      exec(`adb -s "${serial}" shell getprop ro.product.model`, (modelErr, modelOut) => {
-        exec(`adb -s "${serial}" shell getprop ro.build.version.sdk`, (sdkErr, sdkOut) => {
-          const sdk = parseInt((sdkOut || '').trim(), 10);
-          const model = (modelOut || '').trim() || serial;
-          result.push({
-            id: serial,
-            name: model,
-            platform: 'android',
-            androidSerial: serial,
-            androidSdk: isNaN(sdk) ? null : sdk,
+    // 偵測 iOS WiFi（透過 tunneld）
+    const listPath = path.join(__dirname, 'ios_list_devices.py');
+    exec(`"${VENV_PYTHON}" "${listPath}"`, (wifiErr, wifiOut) => {
+      if (!wifiErr && wifiOut?.trim() && wifiOut.trim() !== '[]') {
+        try {
+          const wifiDevices = JSON.parse(wifiOut);
+          wifiDevices.forEach(d => {
+            const udid = d.UniqueDeviceID || '';
+            // 若已以 USB 列出則跳過
+            if (udid && result.find(x => x.id === udid)) return;
+            const wifiId = udid ? `${udid}-wifi` : `ios-wifi-${Date.now()}`;
+            result.push({ id: wifiId, name: d.DeviceName || 'iOS Device', connection: 'wifi' });
           });
-          androidPending--;
-          if (androidPending === 0) finishAndroid();
-        });
-      });
+        } catch {}
+      }
+
+      detectedDevices = result;
+
+      // 只有一台裝置且尚未選擇時自動啟動
+      if (result.length === 1 && !selectedDeviceId) {
+        activateDevice(result[0]);
+      }
+      // 若已選裝置已消失，清除狀態
+      if (selectedDeviceId && !result.find(d => d.id === selectedDeviceId)) {
+        selectedDeviceId = null;
+        stopKeepalive();
+        stopIosDaemon();
+      }
+
+      res.json({ devices: result, selectedId: selectedDeviceId });
     });
   });
 });
@@ -263,7 +203,7 @@ app.post('/api/location', (req, res) => {
   if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return res.json({ success: false, error: '座標超出有效範圍（lat: -90~90, lng: -180~180）' });
   }
-  if (!currentDriver) {
+  if (!iosProcess || !iosDaemonReady) {
     return res.json({ success: false, error: '尚未連接裝置' });
   }
   sendLocation(lat, lng);
@@ -430,12 +370,11 @@ app.get('/api/route/status', (req, res) => {
 // 查詢伺服器與 iOS daemon 狀態
 app.get('/api/status', (req, res) => {
   let iosState = 'idle';
-  if (currentDriver === 'ios') {
+  if (selectedDeviceId) {
     if (iosDaemonReady) iosState = 'ready';
     else if (iosProcess) iosState = 'connecting';
   }
   res.json({
-    driver: currentDriver,
     iosState,        // 'idle' | 'connecting' | 'ready'
     iosDaemonError,  // null | 'channel_closed'
   });
